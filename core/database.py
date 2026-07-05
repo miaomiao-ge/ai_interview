@@ -480,7 +480,7 @@ def ensure_admin_action_log_schema(db):
     db.commit()
 
 
-DEFAULT_MYSQL_URL = "mysql+pymysql://root:1234@127.0.0.1:3306/interview_db?charset=utf8mb4"
+DEFAULT_MYSQL_URL = "mysql+pymysql://ai_interview:AiInterview_DB_2026!@127.0.0.1:3306/interview_db?charset=utf8mb4"
 
 
 def get_mysql_url() -> str:
