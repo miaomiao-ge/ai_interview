@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI面试系统 - 管理控制台</title>
+    <link rel="stylesheet" href="/static/admin/css/admin_style.css?v=20260702scoresort">
+</head>
+<body>
+
+<div id="adminLoginOverlay" class="login-overlay">
+    <div class="admin-auth-shell">
+        <header class="admin-auth-top">
+            <img src="/static/user/assets/auth-icon-shield-check.png" alt="" aria-hidden="true">
+            <div>
+                <h1>AI面试系统</h1>
+                <p>AI面试系统</p>
+            </div>
+        </header>
+
+        <div class="login-card auth-card admin-auth-card">
+            <aside class="auth-brand-panel admin-auth-brand">
+                <div class="admin-security-pill">
+                    <img src="/static/user/assets/auth-icon-shield-check.png" alt="" aria-hidden="true">
+                    <span>安全 · 稳定 · 可靠</span>
+                </div>
+
+                <div class="admin-brand-main">
+                    <div class="admin-console-icon">
+                        <img src="/static/user/assets/auth-icon-shield-lock.png" alt="" aria-hidden="true">
+                    </div>
+                    <h2>Admin Console</h2>
+                    <h3>面试管理后台</h3>
+                    <div class="admin-brand-rule" aria-hidden="true"></div>
+                    <p>智能化面试管理与数据复核平台<br>保障公正 · 提升效率 · 驱动决策</p>
+                </div>
+
+                <div class="admin-feature-cards" aria-hidden="true">
+                    <div><img src="/static/user/assets/auth-icon-document-search.png" alt=""><b>记录复核</b><small>面试记录审核<br>与结果复核</small></div>
+                    <div><img src="/static/user/assets/auth-icon-book-question.png" alt=""><b>题库维护</b><small>题目管理<br>与内容更新</small></div>
+                    <div><img src="/static/user/assets/auth-icon-permission-users.png" alt=""><b>权限管理</b><small>角色分配<br>与权限控制</small></div>
+                </div>
+
+                <div class="admin-panel-wave" aria-hidden="true"></div>
+            </aside>
+
+            <div class="auth-form-panel">
+                <div class="admin-form-heading">
+                    <img src="/static/user/assets/auth-icon-shield-lock.png" alt="" aria-hidden="true">
+                    <div>
+                        <h2 class="admin-login-title">管理端登录</h2>
+                        <p class="admin-login-subtitle">请输入您的管理员账号与密码</p>
+                    </div>
+                </div>
+
+                <label class="admin-field-label" for="adminUsername">管理员账号 / <span>Admin Account</span></label>
+                <div class="admin-input-shell admin-input-user">
+                    <input type="text" id="adminUsername" class="custom-input" placeholder="请输入管理员账号" autocomplete="username">
+                </div>
+
+                <label class="admin-field-label" for="adminPassword">密码 / <span>Password</span></label>
+                <div class="admin-input-shell admin-input-password">
+                    <input type="password" id="adminPassword" class="custom-input" placeholder="请输入密码" autocomplete="current-password">
+                    <button type="button" id="adminPasswordToggle" class="admin-password-toggle" aria-label="显示密码"></button>
+                </div>
+
+                <div class="admin-login-row">
+                    <button type="button" id="adminRememberAccountBtn" class="admin-remember" aria-pressed="true" aria-label="记住账号">
+                        <span aria-hidden="true"></span>
+                        <b>记住账号</b>
+                    </button>
+                </div>
+
+                <button id="adminLoginBtn" class="btn-login">
+                    <img src="/static/user/assets/auth-icon-shield-check.png" alt="" aria-hidden="true">
+                    安全登录
+                </button>
+
+                <div class="admin-status-card">
+                    <img src="/static/user/assets/auth-icon-shield-check.png" alt="" aria-hidden="true">
+                    <div>
+                        <b>系统状态：运行正常</b>
+                        <span>最后登录：2024-05-20 10:24:31　｜　登录地点：北京</span>
+                    </div>
+                </div>
+                <p id="adminAuthStatus" class="admin-auth-status"></p>
+            </div>
+        </div>
+
+        <footer class="admin-auth-footer" aria-hidden="true">
+            <div><img src="/static/user/assets/auth-icon-shield-lock.png" alt=""><span><b>数据加密传输</b><small>SSL/TLS 1.3</small></span></div>
+            <i></i>
+            <div><img src="/static/user/assets/auth-icon-database-stack.png" alt=""><span><b>访问安全审计</b><small>全日志记录</small></span></div>
+            <i></i>
+            <div><img src="/static/user/assets/auth-icon-permission-users.png" alt=""><span><b>多重权限控制</b><small>精细化管理</small></span></div>
+        </footer>
+    </div>
+</div>
+
+<div class="container" id="mainDashboard" style="display: none;">
+    <div class="admin-nav">
+        <div class="admin-route-brand">
+            <b>管理控制台</b>
+            <small>Admin Console</small>
+        </div>
+        <div class="nav-tabs" id="navMenu">
+            <button class="nav-tab active" data-target="view-records"><span>📊</span><b>面试记录</b></button>
+            <button class="nav-tab" data-target="view-questions"><span>📚</span><b>题库管理</b></button>
+            <button class="nav-tab admin-super-only" data-target="view-prompts" style="display: none;"><span>⚙️</span><b>提示词</b></button>
+            <button class="nav-tab admin-super-only" data-target="view-admin-users" style="display: none;"><span>👥</span><b>用户管理</b></button>
+        </div>
+        <div class="admin-route-actions">
+            <button id="logoutBtn" class="btn-logout">退出登录</button>
+        </div>
+    </div>
+
+    <div id="view-records" class="view-section active">
+        <div class="admin-page-heading">
+            <div>
+                <h2>最新面试动态</h2>
+                <p>查看候选人面试记录、复核结果与归档状态</p>
+            </div>
+            <div class="record-toolbar">
+                <input id="recordSearchInput" class="custom-input record-search-input" placeholder="支持邮箱/会话ID/状态/备注/时间模糊查询">
+                <button id="recordSearchBtn" class="action-btn search-action">查询</button>
+                <button id="recordSearchResetBtn" class="action-btn neutral-action">重置</button>
+                <button id="recordScoreSortBtn" class="action-btn neutral-action score-sort-action" type="button" aria-label="按 AI 综合得分降序排列">成绩降序 ↓</button>
+                <button id="batchDeleteRecordsBtn" class="action-btn danger-action admin-super-only" style="display: none;">批量删除</button>
+                <button id="exportCsvBtn" class="action-btn export-action">导出所有成绩表 (CSV)</button>
+            </div>
+        </div>
+
+        <div class="insights-grid" id="insightsDashboard" style="display: none;">
+            <div class="insight-card" style="border-bottom-color: #3498db;"><div class="insight-title">总面试人数</div><div class="insight-value" id="stat-total">0</div></div>
+            <div class="insight-card" style="border-bottom-color: #f1c40f;"><div class="insight-title">AI 平均得分</div><div class="insight-value" id="stat-avg-score">0</div></div>
+            <div class="insight-card" style="border-bottom-color: #2ecc71;"><div class="insight-title">当前拟录取率</div><div class="insight-value" id="stat-pass-rate">0%</div></div>
+            <div class="insight-card" style="border-bottom-color: #e74c3c;"><div class="insight-title">高分段占比 (≥80分)</div><div class="insight-value" id="stat-high-score">0%</div></div>
+        </div>
+
+        <div class="table-container" id="recordsTableContainer">
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th class="record-select-col admin-super-only" style="display: none;"><input type="checkbox" id="selectAllRecords" aria-label="选择当前筛选结果中的全部面试记录"></th>
+                        <th>面试时间</th>
+                        <th>考生邮箱</th>
+                        <th>会话 ID</th>
+                        <th>AI 综合得分</th>
+                        <th>人脸核验</th>
+                        <th>人工复核状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="recordsTableBody"></tbody>
+            </table>
+        </div>
+
+        <div id="reportContent" class="report-modal" role="dialog" aria-modal="true" aria-labelledby="reportDialogTitle" style="display: none;">
+            <div class="report-dialog">
+                <div class="report-modal-head">
+                    <div>
+                        <p class="report-kicker">Interview Review</p>
+                        <h2 id="reportDialogTitle">面试详情</h2>
+                    </div>
+                    <div id="reportActionButtons" class="report-actions">
+                        <button id="exportPdfBtn" class="report-action-button report-export">导出 PDF</button>
+                        <button id="closeReportBtn" class="report-action-button report-close">关闭</button>
+                    </div>
+                </div>
+                <div class="header-card report-summary-card">
+                    <div class="header-info">
+                        <div><span>候选人</span><strong id="ui-email">-</strong></div>
+                        <div><span>面试时间</span><strong id="ui-time">-</strong></div>
+                        <div><span>会话 ID</span><strong id="ui-session-id">-</strong></div>
+                        <div><span>处理状态</span><strong id="ui-processing-status">-</strong></div>
+                        <div><span>评价状态</span><strong id="ui-evaluate-status">-</strong></div>
+                        <div><span>归档状态</span><strong id="ui-archive-status">-</strong></div>
+                    </div>
+                </div>
+                <div class="dashboard-grid">
+                    <div class="card score-circle-container">
+                        <div class="score-label">综合得分</div>
+                        <div class="score-number" id="ui-total-score">0</div>
+                    </div>
+                    <div class="card dimensions-card">
+                        <div class="report-section-head">
+                            <h3>维度表现</h3>
+                            <span>AI 评价拆解</span>
+                        </div>
+                        <div class="dimensions-grid" id="ui-dimensions"></div>
+                    </div>
+                </div>
+                <div class="card face-audit-card" data-html2canvas-ignore="true">
+                    <div class="report-section-head">
+                        <h3>人脸核验与监考</h3>
+                        <span id="ui-face-audit-summary">-</span>
+                    </div>
+                    <div class="face-audit-grid">
+                        <div><span>核验状态</span><strong id="ui-face-status">-</strong></div>
+                        <div><span>比对分数</span><strong id="ui-face-score">-</strong></div>
+                        <div><span>核验时间</span><strong id="ui-face-time">-</strong></div>
+                        <div><span>监考风险</span><strong id="ui-proctor-risk">-</strong></div>
+                    </div>
+                    <div class="face-audit-flags" id="ui-proctor-flags"></div>
+                    <div class="proctor-event-list" id="ui-proctor-events"></div>
+                </div>
+                <div class="bottom-grid">
+                    <div class="card list-box">
+                        <div class="report-section-head"><h3>核心优势</h3></div>
+                        <ul id="ui-advantages"></ul>
+                    </div>
+                    <div class="card list-box">
+                        <div class="report-section-head"><h3>改进建议</h3></div>
+                        <ul id="ui-improvements"></ul>
+                    </div>
+                    <div class="card list-box media-card" data-html2canvas-ignore="true">
+                        <div class="report-section-head"><h3>录像归档</h3></div>
+                        <video id="ui-video" controls playsinline></video>
+                        <a id="ui-download-av" href="#" class="btn-download" target="_blank">下载视频</a>
+                    </div>
+                </div>
+                <div class="report-two-column">
+                    <div class="card transcript-card">
+                        <div class="report-section-head">
+                            <h3>完整对话逐字稿</h3>
+                            <span>候选人与 AI 面试官对话</span>
+                        </div>
+                        <div id="ui-chat-history" class="chat-history-box"></div>
+                    </div>
+                    <div class="card review-card" data-html2canvas-ignore="true">
+                        <div class="report-section-head">
+                            <h3>人工复核与录用决策</h3>
+                            <span>保存后将同步更新列表状态</span>
+                        </div>
+                        <div class="review-form-grid">
+                            <label>
+                                <span>复核结论</span>
+                                <select id="reviewStatus" class="custom-input">
+                                    <option value="待复核">待复核</option>
+                                    <option value="拟录取">拟录取</option>
+                                    <option value="淘汰">淘汰</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>复核备注</span>
+                                <textarea id="reviewRemark" class="custom-input" rows="5" placeholder="记录复核依据、风险点或录用建议"></textarea>
+                            </label>
+                            <button id="saveReviewBtn" class="btn-login review-save-btn">保存复核</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-questions" class="view-section">
+        <div class="admin-page-heading section-render-heading">
+            <div>
+                <h2>题库管理</h2>
+                <p>维护面试题目、考核维度与题库内容</p>
+            </div>
+            <div class="section-actions">
+                <button id="batchDeleteQuestionsBtn" class="action-btn" style="background:#e74c3c;">🗑️ 批量删除</button>
+                <button id="addQuestionBtn" class="action-btn">➕ 新增考题</button>
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="custom-table">
+                <thead><tr><th style="width: 5%;"><input type="checkbox" id="selectAllQuestions"></th><th style="width: 20%;">考核维度</th><th style="width: 55%;">题目内容</th><th>操作</th></tr></thead>
+                <tbody id="questionsTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="view-prompts" class="view-section admin-super-only" style="display: none;">
+        <div class="admin-page-heading section-render-heading">
+            <div>
+                <h2>提示词配置</h2>
+                <p>调整面试官行为、追问风格与评价标准</p>
+            </div>
+            <button id="savePromptsBtn" class="action-btn" style="background: #9b59b6;">💾 保存设定使其立即生效</button>
+        </div>
+        <div class="card prompt-config-card" style="margin-bottom: 20px;">
+            <h3 style="margin-top: 0;">👁 面试官角色与行为设定 (Base Prompt)</h3>
+            <p style="font-size: 13px; color: #7f8c8d;">这部分决定面试时 AI 的性格、提问风格以及长度控制。</p>
+            <textarea id="basePromptInput" class="custom-input" rows="8" style="font-family: monospace; line-height: 1.5;"></textarea>
+        </div>
+        <div class="card prompt-config-card">
+            <h3 style="margin-top: 0;">🧾 报告生成与量化评分标准 (Evaluation Prompt)</h3>
+            <p style="font-size: 13px; color: #7f8c8d;">面试结束后，后台会依据这里的规则生成报告。请保留 `{transcript}` 占位符用于注入对话内容。</p>
+            <textarea id="evalPromptInput" class="custom-input" rows="18" style="font-family: monospace; line-height: 1.5;"></textarea>
+        </div>
+    </div>
+
+    <div id="view-admin-users" class="view-section admin-super-only" style="display: none;">
+        <div class="admin-page-heading section-render-heading">
+            <div>
+                <h2>用户管理</h2>
+                <p>管理后台账号、登录审计与操作留痕</p>
+            </div>
+            <div class="section-actions">
+                <button id="refreshAdminUsersBtn" class="action-btn" style="background:#95a5a6;">刷新列表</button>
+                <button id="addAdminBtn" class="action-btn" style="background:#2ecc71;">➕ 新增管理员</button>
+            </div>
+        </div>
+        <div class="table-container">
+            <table class="custom-table admin-users-table">
+                <thead>
+                    <tr>
+                        <th style="width: 16%;">用户名</th>
+                        <th style="width: 16%;">显示名</th>
+                        <th style="width: 20%;">邮箱</th>
+                        <th style="width: 12%;">角色</th>
+                        <th style="width: 12%;">状态</th>
+                        <th style="width: 16%;">最近登录</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="adminsTableBody"></tbody>
+            </table>
+        </div>
+        <div class="admin-audit-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px;">
+            <div class="card audit-card">
+                <div class="audit-card-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="margin: 0;">登录日志</h3>
+                    <button id="refreshAdminLoginRecordsBtn" class="action-btn" style="background:#95a5a6; padding: 8px 14px;">刷新</button>
+                </div>
+                <div class="table-container" style="margin-bottom: 0;">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>登录时间</th>
+                                <th>用户名</th>
+                                <th>结果</th>
+                                <th>IP</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminLoginRecordsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card audit-card">
+                <div class="audit-card-head" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="margin: 0;">操作日志</h3>
+                    <button id="refreshAdminActionLogsBtn" class="action-btn" style="background:#95a5a6; padding: 8px 14px;">刷新</button>
+                </div>
+                <div class="table-container" style="margin-bottom: 0;">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>操作时间</th>
+                                <th>操作人</th>
+                                <th>动作</th>
+                                <th>说明</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminActionLogsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="questionModal" class="login-overlay admin-dialog-overlay" style="display:none; z-index: 2000;">
+    <div class="login-card admin-control-modal" style="max-width: 500px; text-align: left;">
+        <h3 id="modalTitle" style="margin-top:0;">新增题目</h3>
+        <label style="font-weight: bold; font-size: 14px;">考核维度</label>
+        <select id="qCategory" class="custom-input" style="margin-top: 5px; margin-bottom: 15px;">
+            <option value="个人基本情况与留学动机">个人基本情况与留学动机</option>
+            <option value="学术背景与学习能力">学术背景与学习能力</option>
+            <option value="专业认知与申请规划">专业认知与申请规划</option>
+            <option value="跨文化交流能力">跨文化交流能力</option>
+            <option value="综合素质">综合素质</option>
+        </select>
+        <label style="font-weight: bold; font-size: 14px;">题目内容</label>
+        <textarea id="qContent" class="custom-input" rows="4" style="margin-top: 5px; margin-bottom: 15px;"></textarea>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button id="cancelQBtn" class="btn-logout" style="background:#95a5a6;">取消</button>
+            <button id="saveQBtn" class="btn-login" style="width: 100px; margin:0; padding: 10px;">保存</button>
+        </div>
+    </div>
+</div>
+
+<div id="adminUserModal" class="login-overlay admin-dialog-overlay" style="display:none; z-index: 2100;">
+    <div class="login-card admin-control-modal admin-user-editor-modal" style="max-width: 620px; text-align: left;">
+        <h3 id="adminUserModalTitle" style="margin-top:0;">新增管理员</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+            <div>
+                <label style="font-weight: bold; font-size: 14px;">用户名</label>
+                <input id="adminUserUsername" class="custom-input" style="margin-top: 5px;" placeholder="用户名">
+            </div>
+            <div>
+                <label style="font-weight: bold; font-size: 14px;">显示名</label>
+                <input id="adminUserDisplayName" class="custom-input" style="margin-top: 5px;" placeholder="显示名">
+            </div>
+            <div>
+                <label style="font-weight: bold; font-size: 14px;">邮箱</label>
+                <input id="adminUserEmail" type="email" class="custom-input" style="margin-top: 5px;" placeholder="name@example.com">
+            </div>
+            <div>
+                <label style="font-weight: bold; font-size: 14px;">角色</label>
+                <select id="adminUserRole" class="custom-input" style="margin-top: 5px;">
+                    <option value="admin">admin</option>
+                    <option value="super_admin">super_admin</option>
+                </select>
+            </div>
+        </div>
+        <div id="adminUserPasswordField" style="margin-top: 8px;">
+            <label style="font-weight: bold; font-size: 14px;">初始密码</label>
+            <input id="adminUserPassword" type="password" class="custom-input" style="margin-top: 5px;" placeholder="请输入初始密码">
+        </div>
+        <p id="adminUserModalHint" style="font-size: 13px; color:#7f8c8d; margin: 0 0 15px 0;"></p>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button id="cancelAdminUserBtn" class="btn-logout" style="background:#95a5a6;">取消</button>
+            <button id="saveAdminUserBtn" class="btn-login" style="width: 120px; margin:0; padding: 10px;">保存</button>
+        </div>
+    </div>
+</div>
+
+<div id="resetAdminPasswordModal" class="login-overlay admin-dialog-overlay" style="display:none; z-index: 2100;">
+    <div class="login-card admin-control-modal" style="max-width: 420px; text-align: left;">
+        <h3 id="resetAdminPasswordTitle" style="margin-top:0;">重置密码</h3>
+        <label style="font-weight: bold; font-size: 14px;">新密码</label>
+        <input id="resetAdminPasswordInput" type="password" class="custom-input" style="margin-top: 5px;" placeholder="请输入新密码">
+        <p id="resetAdminPasswordHint" style="font-size: 13px; color:#7f8c8d; margin: 0 0 15px 0;"></p>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button id="cancelResetAdminPasswordBtn" class="btn-logout" style="background:#95a5a6;">取消</button>
+            <button id="confirmResetAdminPasswordBtn" class="btn-login" style="width: 120px; margin:0; padding: 10px;">重置密码</button>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="/static/admin/js/admin_main.js?v=20260702scoresort"></script>
+</body>
+</html>

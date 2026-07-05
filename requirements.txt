@@ -1,0 +1,34 @@
+# Web framework
+fastapi
+uvicorn
+pydantic
+python-multipart
+
+# Database
+SQLAlchemy
+PyMySQL
+openpyxl
+
+# Auth and config
+PyJWT
+python-dotenv
+redis
+
+# Media and audio processing
+av
+
+# AI / LLM client
+httpx
+langchain-core
+langchain-openai
+
+# Alibaba Cloud services
+aliyun-python-sdk-core
+oss2
+alibaba-nls-python-sdk
+alibabacloud_facebody20191230
+alibabacloud_tea_openapi
+alibabacloud_tea_util
+
+# Tests
+pytest

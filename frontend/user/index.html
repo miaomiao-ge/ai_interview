@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI面试系统</title>
+    <link rel="stylesheet" href="/static/user/css/style.css?v=20260616prepLogoutA">
+
+    <style>
+        /* ✨ 核心魔法：限定隐藏范围！只有进入 #interviewSection 面试区后，单语种隔离才会生效！ */
+        /* 外面的登录页和准备页将完美保留双语对照！ */
+        body[data-lang="zh"] #interviewSection .lang-en { display: none !important; }
+        body[data-lang="en"] #interviewSection .lang-zh { display: none !important; }
+    </style>
+</head>
+<body data-lang="zh">
+
+    <div id="loginOverlay" class="login-overlay" data-mode="login">
+        <div class="login-card auth-card">
+            <aside class="auth-brand-panel">
+                <div class="auth-brand-copywrap brand-mode brand-mode-login">
+                    <div class="auth-logo-row" aria-label="AI面试系统">
+                        <img class="auth-logo-mark" src="/static/user/assets/auth-logo-aurora.svg" alt="" aria-hidden="true">
+                        <span class="auth-logo-text">AI Interview</span>
+                    </div>
+                    <h1 class="auth-brand-title">
+                        <span>AI面试系统</span>
+                        <span class="auth-brand-title-en">AI面试系统</span>
+                    </h1>
+                    <div class="auth-brand-rule" aria-hidden="true"></div>
+                    <p class="auth-brand-copy">
+                        <span class="auth-brand-copy-cn">身份验证 ・ 语音问答 ・ 评价归档</span>
+                        <span class="auth-brand-copy-en">Identity Verification · Voice Q&A · Evaluation & Archiving</span>
+                    </p>
+                </div>
+                <div class="auth-brand-copywrap brand-mode brand-mode-register" hidden>
+                    <div class="auth-logo-row" aria-label="AI面试系统">
+                        <img class="auth-logo-mark auth-logo-ai auth-logo-security" src="/static/user/assets/auth-logo-identity-chip.svg" alt="" aria-hidden="true">
+                        <span class="auth-logo-text">AI Interview</span>
+                    </div>
+                    <h1 class="auth-brand-title">
+                        <span>创建候选人账号</span>
+                        <span class="auth-brand-title-en">Create Candidate Account</span>
+                    </h1>
+                    <div class="auth-brand-rule" aria-hidden="true"></div>
+                    <p class="auth-brand-copy">
+                        <span class="auth-brand-copy-cn">加入AI面试系统，开启智能面试新体验</span>
+                        <span class="auth-brand-copy-en">Join AI面试系统</span>
+                    </p>
+                    <div class="auth-register-wave" aria-hidden="true">
+                        <canvas class="auth-wave-canvas" data-auth-wave-canvas></canvas>
+                    </div>
+                    <div class="auth-feature-list" aria-hidden="true">
+                        <div class="auth-feature-item">
+                            <span class="auth-feature-icon auth-feature-ai"></span>
+                            <span><b>AI 驱动 / AI Powered</b><small>智能评估，精准识别人才潜力 / Intelligent evaluation for candidate potential</small></span>
+                        </div>
+                        <div class="auth-feature-item">
+                            <span class="auth-feature-icon auth-feature-fair"></span>
+                            <span><b>公平公正 / Fair Process</b><small>标准化流程，确保每位候选人公平对待 / A standardized and fair process for every candidate</small></span>
+                        </div>
+                        <div class="auth-feature-item">
+                            <span class="auth-feature-icon auth-feature-open"></span>
+                            <span><b>包容开放 / Inclusive</b><small>多元化与包容性，创造更多可能 / Diversity and inclusion create more possibilities</small></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="auth-brand-copywrap brand-mode brand-mode-forgot" hidden>
+                    <div class="auth-logo-row" aria-label="AI面试系统">
+                        <img class="auth-logo-mark auth-logo-ai" src="/static/user/assets/auth-icon-ai-aj.png" alt="" aria-hidden="true">
+                        <span class="auth-logo-text">AI Interview</span>
+                    </div>
+                    <h1 class="auth-brand-title">
+                        <span>找回密码</span>
+                        <span class="auth-brand-title-en">Recover Password</span>
+                    </h1>
+                    <p class="auth-brand-copy">
+                        <span class="auth-brand-copy-cn">我们将帮助您重置密码并重新获得访问权限，确保您的账户安全。</span>
+                        <span class="auth-brand-copy-en">We will help you reset your password and regain secure account access.</span>
+                    </p>
+                    <div class="auth-forgot-illustration" aria-hidden="true">
+                        <canvas class="auth-wave-canvas" data-auth-wave-canvas></canvas>
+                    </div>
+                    <div class="auth-trust-row" aria-hidden="true">
+                        <div class="auth-trust-item">
+                            <span class="auth-trust-icon trust-safe"></span>
+                            <span><b>安全可靠 / Secure</b><small>多重保护，确保账户安全 / Multi-layer protection keeps your account safe</small></span>
+                        </div>
+                        <div class="auth-trust-item">
+                            <span class="auth-trust-icon trust-fair"></span>
+                            <span><b>公平公正 / Fair</b><small>AI 驱动，公平评估每个人 / AI-assisted evaluation for every candidate</small></span>
+                        </div>
+                        <div class="auth-trust-item">
+                            <span class="auth-trust-icon trust-growth"></span>
+                            <span><b>助力成长 / Growth</b><small>智能反馈，成就更好的你 / Smart feedback helps you improve</small></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="auth-signal" aria-hidden="true">
+                    <canvas class="auth-wave-canvas" data-auth-wave-canvas></canvas>
+                </div>
+            </aside>
+
+            <form id="authForm" class="auth-form-panel" novalidate>
+                <h2 id="authTitle" class="login-title"></h2>
+                <p id="authSubtitle" class="login-subtitle"></p>
+                <div class="auth-mode-hint auth-mode-hint-forgot">
+                    <img src="/static/user/assets/auth-icon-shield-check.png" alt="" aria-hidden="true">
+                    <p>请输入您注册时使用的邮箱，我们将向您发送验证码，验证通过后即可设置新密码。<span class="i18n-en">Enter the email used during registration. We will send you a verification code, then you can set a new password.</span></p>
+                </div>
+
+                <div class="input-group auth-field" id="wrapEmail">
+                    <label class="field-label" for="emailInput">邮箱 / Email</label>
+                    <div class="auth-input-shell auth-status-shell" data-icon="email">
+                        <input type="email" id="emailInput" class="custom-input" placeholder="请输入邮箱 / Enter your email" autocomplete="email" autofocus>
+                    </div>
+                </div>
+                <div class="input-group auth-field auth-code-row" id="wrapCode" style="display: none;">
+                    <label class="field-label" for="codeInput">验证码 / Code</label>
+                    <div class="auth-code-control">
+                        <div class="auth-input-shell" data-icon="code">
+                            <input type="text" id="codeInput" class="custom-input" placeholder="验证码 / Code" maxlength="6" autocomplete="one-time-code">
+                        </div>
+                        <button id="sendCodeBtn" class="btn btn-blue" type="button">获取 / Get</button>
+                    </div>
+                    <p id="codeHelp" class="field-help auth-code-help">验证码已发送至 <span id="codeHelpEmail">user@example.com</span>，请在 5 分钟内输入<span class="i18n-en">The code has been sent to this email. Please enter it within 5 minutes.</span></p>
+                </div>
+                <div class="input-group auth-field" id="wrapUsername" style="display: none;">
+                    <label class="field-label" for="usernameInput">姓名 / Full Name</label>
+                    <div class="auth-input-shell auth-status-shell" data-icon="user">
+                        <input type="text" id="usernameInput" class="custom-input" placeholder="真实姓名 / Full Name" autocomplete="name">
+                    </div>
+                </div>
+                <div class="input-group auth-field" id="wrapPassword">
+                    <label class="field-label" for="passwordInput">密码 / Password</label>
+                    <div class="auth-input-shell auth-password-shell" data-icon="password">
+                        <input type="password" id="passwordInput" class="custom-input" placeholder="请输入密码 / Enter your password" autocomplete="current-password">
+                        <button type="button" id="passwordToggle" class="auth-password-toggle" aria-label="显示密码"></button>
+                    </div>
+                    <div class="auth-password-strength" aria-hidden="true">
+                        <div class="auth-strength-bars"><span></span><span></span><span></span><span></span></div>
+                        <div class="auth-strength-copy">
+                            <span class="auth-strength-label">密码强度：<b>中等</b><span class="i18n-en">Password strength: Medium</span></span>
+                            <span class="auth-strength-rule">8-16 位，字母+数字+符号组合<span class="i18n-en">8-16 characters, including letters, numbers, and symbols</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <label class="auth-remember" for="rememberMe">
+                    <input id="rememberMe" type="checkbox">
+                    <span class="auth-checkmark" aria-hidden="true"></span>
+                    <span>记住我 / Remember me</span>
+                </label>
+
+                <button id="authBtn" class="btn btn-primary login-btn" type="submit"></button>
+                <p id="authStatus" class="login-status" aria-live="polite"></p>
+
+                <div class="auth-divider" aria-hidden="true"><span>或 / Or</span></div>
+                <div class="auth-switch">
+                    <span id="toggleText"></span>
+                    <a href="#" id="toggleModeBtn"></a>
+                    <span class="auth-link-separator" aria-hidden="true"></span>
+                    <span id="forgotPwdLinkWrap" class="auth-forgot">
+                        <a href="#" id="forgotPwdBtn" class="text-link">忘记密码 / Forgot Password</a>
+                    </span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="startSection" class="section-box init-box prep-card" style="display: none;">
+        <header class="prep-topbar">
+            <div class="prep-brand">
+                <img src="/static/user/assets/prep-icon-xidian-logo.png" alt="" aria-hidden="true">
+                <span>AI面试系统</span>
+            </div>
+            <div class="prep-top-actions" aria-label="system status">
+                <span class="prep-system-pill"><i></i>系统状态 / System：<b>正常 / Normal</b></span>
+                <span class="prep-help"><img src="/static/user/assets/prep-icon-help-headset.png" alt="" aria-hidden="true">帮助中心 / Help Center</span>
+                <button type="button" id="prepLogoutBtn" class="prep-logout-button" aria-label="退出登录">
+                    <span class="prep-logout-icon" aria-hidden="true"></span>
+                    <span class="prep-logout-copy">退出登录 / Logout</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="prep-shell">
+            <section class="prep-hero">
+                <h1 class="prep-title">面试准备<span class="prep-title-en">Interview Preparation</span></h1>
+                <p class="prep-copy">请完成以下准备工作，以确保面试过程顺利进行<span class="i18n-en">Please complete the following checks to ensure a smooth interview process.</span></p>
+            </section>
+
+            <ol class="prep-steps" aria-label="interview preparation progress" style="--prep-progress: 0;">
+                <li class="prep-step is-active">
+                    <span class="prep-step-mark">1</span>
+                    <b>设备检测<span class="i18n-en">Device Check</span></b>
+                </li>
+                <li class="prep-step">
+                    <span class="prep-step-mark">2</span>
+                    <b>环境检查<span class="i18n-en">Environment Check</span></b>
+                </li>
+                <li class="prep-step">
+                    <span class="prep-step-mark">3</span>
+                    <b>协议确认<span class="i18n-en">Agreement</span></b>
+                </li>
+                <li class="prep-step">
+                    <span class="prep-step-mark">4</span>
+                    <b>准备完成<span class="i18n-en">Ready</span></b>
+                </li>
+            </ol>
+
+            <section class="prep-room-card">
+                <div class="prep-main-panel">
+                    <div class="prep-section-title">面试语言 / Interview Language</div>
+                    <select id="interviewLang" class="custom-input prep-select" aria-label="Interview Language">
+                        <option value="zh">CN 中文</option>
+                        <option value="en">EN English</option>
+                    </select>
+                    <div class="prep-language-grid" role="group" aria-label="Interview Language">
+                        <button type="button" class="prep-language-option is-selected" data-lang-value="zh">
+                            <img src="/static/user/assets/prep-icon-language-globe.png" alt="" aria-hidden="true">
+                            <span>中文</span>
+                        </button>
+                        <button type="button" class="prep-language-option" data-lang-value="en">
+                            <img src="/static/user/assets/prep-icon-language-globe.png" alt="" aria-hidden="true">
+                            <span>English</span>
+                        </button>
+                    </div>
+                    <p class="prep-language-help">请选择您更习惯使用的面试语言，进入面试后可在设置中调整。<span class="i18n-en">Choose your preferred interview language. You can adjust it in settings after entering the interview.</span></p>
+
+                    <div class="prep-check-list" aria-label="device readiness">
+                        <div class="prep-check-item">
+                            <span class="prep-check-icon"><img src="/static/user/assets/prep-icon-camera.png" alt="" aria-hidden="true"></span>
+                            <span class="prep-check-copy"><b>摄像头可用<span class="i18n-en">Camera Available</span></b><small>检测到摄像头已正常连接<span class="i18n-en">Camera is connected and working normally.</span></small></span>
+                            <span class="prep-check-status"><span class="prep-status-dot" aria-hidden="true"></span>待检测 / Pending</span>
+                        </div>
+                        <div class="prep-check-item">
+                            <span class="prep-check-icon"><img src="/static/user/assets/prep-icon-headphones.png" alt="" aria-hidden="true"></span>
+                            <span class="prep-check-copy"><b>优先使用耳机麦克风<span class="i18n-en">Headset Microphone Preferred</span></b><small>使用耳机可获得更清晰的音频效果<span class="i18n-en">A headset helps capture clearer audio.</span></small></span>
+                            <span class="prep-check-status"><span class="prep-status-dot" aria-hidden="true"></span>待检测 / Pending</span>
+                        </div>
+                        <div class="prep-check-item">
+                            <span class="prep-check-icon"><img src="/static/user/assets/prep-icon-microphone.png" alt="" aria-hidden="true"></span>
+                            <span class="prep-check-copy"><b>全程录音录像<span class="i18n-en">Full Recording</span></b><small>面试过程将全程录音录像以确保公平公正<span class="i18n-en">The interview will be recorded to ensure fairness.</span></small></span>
+                            <span class="prep-check-status"><span class="prep-status-dot" aria-hidden="true"></span>待检测 / Pending</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="prep-action-area">
+                    <button id="initInterviewBtn" class="btn btn-primary btn-large prep-primary" disabled>
+                        <img src="/static/user/assets/prep-icon-enter-arrow.png" alt="" aria-hidden="true">
+                        <span class="prep-primary-copy">进入面试室 / Enter Interview Room</span>
+                    </button>
+                    <div class="prep-footer-meta">
+                        <span><i></i><span class="prep-meta-copy">请先完成设备检测和录制授权确认<span class="i18n-en">Please complete device checks and recording authorization first.</span></span></span>
+                        <span class="prep-meta-divider"></span>
+                        <span><img src="/static/user/assets/prep-icon-clock.png" alt="" aria-hidden="true"><span class="prep-meta-copy">当前时间 / Current Time：<b id="prepClock">--</b></span></span>
+                    </div>
+                    <p id="initStatus" class="status-text prep-status"></p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="interviewSection" class="interview-layout" style="display: none;">
+        <div class="panel left-panel">
+            <div class="panel-header">
+                🤖 <span class="lang-zh">人工智能提问区</span><span class="lang-en">Artificial Intelligence Question Panel</span>
+            </div>
+            <div class="ai-profile">
+                <div class="ai-avatar-container">
+                    <div class="tech-ring outer-ring"></div>
+                    <div class="tech-ring inner-ring"></div>
+                    <div id="aiAvatarBox" class="ai-avatar-wrapper" style="background: transparent; border: none; box-shadow: none; overflow: hidden; display: flex; justify-content: center; align-items: center;">
+                        <canvas id="live2dCanvas" style="width: 150px; height: 150px; outline: none;"></canvas>
+                    </div>
+                    <div id="aiSpeakingBadge" class="speaking-badge" style="display: none;">
+                        🎙️ <span class="lang-zh">讲话中...</span><span class="lang-en">Speaking...</span>
+                    </div>
+                </div>
+                <div class="ai-identity">
+                    <div class="ai-name">
+                        <span class="lang-zh">AI面试系统面试官</span><span class="lang-en">AI面试系统 Interviewer</span>
+                    </div>
+                    <div class="ai-status">
+                        <span class="status-dot"></span>
+                        <span class="lang-zh">系统在线</span><span class="lang-en">System Online</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-bubble-container">
+                <div class="bubble-header">
+                    <span style="font-size: 14px;">💬</span>
+                    <span class="lang-zh">面试官当前提问</span><span class="lang-en">Current Question</span>
+                </div>
+                <div class="chat-bubble">
+                    <p id="aiFirstQuestion" style="margin: 0; white-space: pre-wrap;">
+                        <span class="lang-zh">请先点击中间面板的“开启摄像头”按钮。</span>
+                        <span class="lang-en">Please click the "Start Camera" button first.</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel center-panel">
+            <div class="panel-header">
+                <span>📹 <span class="lang-zh">视频面试区</span><span class="lang-en">Video Interview Area</span></span>
+                <span id="status" class="system-status">● <span class="lang-zh">等待开始</span><span class="lang-en">Waiting to start</span></span>
+            </div>
+            <div class="video-wrapper">
+                <video id="localVideo" autoplay playsinline muted></video>
+                <audio id="remoteAudio" autoplay style="display: none;"></audio>
+                <audio id="ttsAudio" autoplay style="display: none;"></audio>
+                <audio id="ttsPlayer" autoplay style="display: none;"></audio>
+            </div>
+            <div class="controls-wrapper">
+                <div id="micDeviceBox" class="mic-device-box">
+                    <label for="micDeviceSelect">
+                        <span class="lang-zh">麦克风</span><span class="lang-en">Mic</span>
+                    </label>
+                    <select id="micDeviceSelect" disabled>
+                        <option value="">点击开始后检测 / Detected after start</option>
+                    </select>
+                    <span id="micDeviceHint" class="mic-device-hint">
+                        <span class="lang-zh">优先耳机</span><span class="lang-en">Headset first</span>
+                    </span>
+                </div>
+                <button id="startBtn" class="btn btn-outline-blue" style="width: auto;">
+                    ▶️ <span class="lang-zh">开启摄像头并连接人工智能</span><span class="lang-en">Start Camera & Connect Artificial Intelligence</span>
+                </button>
+                <div id="answerControls" class="answer-controls-group" style="display: none;">
+                    <div id="timerDisplay" class="timer-box">03:00</div>
+                    <button id="extendTimeBtn" class="btn btn-orange">
+                        ⏳ <span class="lang-zh">延时</span><span class="lang-en">Extend</span>
+                    </button>
+                    <button id="finishAnswerBtn" class="btn btn-green">
+                        ✅ <span class="lang-zh">回答完毕</span><span class="lang-en">Done</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel right-panel">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>📋 <span class="lang-zh">考核进度大纲</span><span class="lang-en">Assessment Syllabus</span></span>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button id="reselectLangBtn" class="btn btn-outline-blue" style="padding: 4px 10px; font-size: 12px; margin: 0;">
+                        <span class="lang-zh">重选语言</span><span class="lang-en">Change Language</span>
+                    </button>
+                    <button id="logoutBtn" class="btn btn-red" style="display: none; padding: 4px 10px; font-size: 12px; margin: 0;">
+                        <span class="lang-zh">退出系统</span><span class="lang-en">Logout</span>
+                    </button>
+                </div>
+            </div>
+            <div class="info-card">
+                <h4>🎯 <span class="lang-zh">考核维度 (五项维度)</span><span class="lang-en">Assessment Dimensions</span></h4>
+                <ul class="dimension-list">
+                    <li>💡 <span class="lang-zh">个人基本情况与留学动机</span><span class="lang-en">Personal Info & Motivation</span></li>
+                    <li>💡 <span class="lang-zh">学术背景与学习能力</span><span class="lang-en">Academic Background & Ability</span></li>
+                    <li>💡 <span class="lang-zh">专业认知与申请规划</span><span class="lang-en">Major Cognition & Planning</span></li>
+                    <li>💡 <span class="lang-zh">跨文化交流能力</span><span class="lang-en">Cross-cultural Communication</span></li>
+                    <li>💡 <span class="lang-zh">综合素质表现</span><span class="lang-en">Comprehensive Quality</span></li>
+                </ul>
+            </div>
+            <div class="info-card" style="margin-top: 20px;">
+                <h4>⚠️ <span class="lang-zh">面试须知</span><span class="lang-en">Interview Notice</span></h4>
+                <p style="font-size: 13px; color: #64748b; line-height: 1.6; margin-top: 10px;">
+                    <span class="lang-zh">
+                        1. 面试全程录音录像，请保持正脸面向屏幕。<br>
+                        2. 每道题目基础作答时间为 2 分钟。<br>
+                        3. 若时间不足，单题可申请最多 3 次延时。<br>
+                        4. 答题完毕请务必点击“回答完毕”按钮推进流程。<br>
+                        5. 强行刷新页面视为放弃本次面试。<br>
+                        6. 面试前请佩戴耳机，保持麦克风畅通。<br>
+                    </span>
+                    <span class="lang-en">
+                        1. The interview is recorded. Please face the screen.<br>
+                        2. The basic answering time for each question is 2 mins.<br>
+                        3. You can apply for extension up to 3 times per question.<br>
+                        4. Click "Done" to proceed after answering.<br>
+                        5. Refreshing the page abandons the interview.<br>
+                        6. Please wear headphones before the interview and keep the microphone clear.
+                    </span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/static/user/js/main.js?v=20260616prepLogoutA"></script>
+</body>
+</html>

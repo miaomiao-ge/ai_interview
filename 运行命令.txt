@@ -1,0 +1,7 @@
+1、进入虚拟环境运行下面命令
+.\.venv_py312\Scripts\activate.bat
+python -m core.interview_worker
+2、拉取接口数据
+python sync_xidian_students.py
+python sync_xidian_students.py --limit 15（拉取指定条数）
+3、运行main.py

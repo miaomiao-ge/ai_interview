@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>帮助中心 - AI面试系统</title>
+    <link rel="stylesheet" href="/static/user/css/help.css?v=20260617helpNavB">
+</head>
+<body>
+    <header class="help-topbar">
+        <a class="help-brand" href="/" aria-label="返回AI面试系统首页">
+            <img src="/static/user/assets/prep-icon-xidian-logo.png" alt="" aria-hidden="true">
+            <span>AI面试系统</span>
+        </a>
+        <nav class="help-actions" aria-label="帮助中心导航" data-help-i18n-aria-label="navLabel">
+            <span class="help-language-slot" id="helpLanguageSlot"></span>
+            <a href="#flow" data-help-i18n="navFlow">流程说明</a>
+            <a href="#guide" data-help-i18n="navGuide">使用说明</a>
+            <a href="#faq" data-help-i18n="navFaq">常见问题</a>
+            <button type="button" class="help-back" id="helpBackBtn">
+                <span aria-hidden="true">←</span>
+                <span data-help-i18n="navBack">返回</span>
+            </button>
+        </nav>
+    </header>
+
+    <main class="help-page">
+        <section class="help-hero" aria-labelledby="helpTitle">
+            <div>
+                <p class="help-eyebrow">Help Center</p>
+                <h1 id="helpTitle" data-help-i18n="heroTitle">帮助中心</h1>
+                <p class="help-subtitle" data-help-i18n="heroSubtitle">AI面试系统使用说明与操作指南</p>
+            </div>
+            <aside class="help-hero-panel" aria-label="面试前准备摘要" data-help-i18n-aria-label="prepSummaryLabel">
+                <span class="hero-panel-label" data-help-i18n="prepLabel">面试前建议</span>
+                <strong data-help-i18n="prepTime">10 分钟</strong>
+                <p data-help-i18n="prepCopy">预留设备检测、授权确认与人脸核验时间，保持浏览器授权开启。</p>
+            </aside>
+        </section>
+
+        <section class="help-section" id="flow" aria-labelledby="flowTitle">
+            <div class="section-heading">
+                <p>Interview Flow</p>
+                <h2 id="flowTitle" data-help-i18n="flowTitle">系统流程说明</h2>
+            </div>
+            <ol class="flow-timeline">
+                <li><span class="flow-index">1</span><div><h3 data-help-i18n="flowDeviceTitle">设备检测</h3><p data-help-i18n="flowDeviceCopy">确认摄像头、麦克风与录制能力可用，并允许浏览器访问设备。</p></div></li>
+                <li><span class="flow-index">2</span><div><h3 data-help-i18n="flowEnvironmentTitle">环境检查</h3><p data-help-i18n="flowEnvironmentCopy">选择安静、光线稳定的位置，关闭可能干扰面试的应用通知。</p></div></li>
+                <li><span class="flow-index">3</span><div><h3 data-help-i18n="flowFaceTitle">人脸核验</h3><p data-help-i18n="flowFaceCopy">按页面提示完成本人身份核验，确保面部完整出现在画面中。</p></div></li>
+                <li><span class="flow-index">4</span><div><h3 data-help-i18n="flowInterviewTitle">进入面试</h3><p data-help-i18n="flowInterviewCopy">系统生成 AI 面试官语音与题目，按页面提示完成问答。</p></div></li>
+            </ol>
+        </section>
+
+        <section class="help-grid" id="guide" aria-labelledby="guideTitle">
+            <div class="section-heading">
+                <p>Usage Guide</p>
+                <h2 id="guideTitle" data-help-i18n="guideTitle">使用说明</h2>
+            </div>
+            <div class="guide-cards">
+                <article><img src="/static/user/assets/prep-icon-enter-arrow.png" alt="" aria-hidden="true"><h3 data-help-i18n="guideStartTitle">如何开始面试</h3><p data-help-i18n="guideStartCopy">登录后进入面试准备页，依次完成语言选择、设备检测、授权确认与人脸核验，按钮变为可用后即可进入面试室。</p></article>
+                <article><img src="/static/user/assets/prep-icon-check-circle.png" alt="" aria-hidden="true"><h3 data-help-i18n="guideDeviceTitle">如何通过设备检测</h3><p data-help-i18n="guideDeviceCopy">点击检测设备后，在浏览器弹窗中允许摄像头和麦克风权限。若权限被拒绝，请在地址栏左侧重新开启。</p></article>
+                <article><img src="/static/user/assets/prep-icon-camera.png" alt="" aria-hidden="true"><h3 data-help-i18n="guideCameraTitle">摄像头/麦克风要求</h3><p data-help-i18n="guideCameraCopy">建议使用清晰摄像头与耳机麦克风，保持麦克风未静音，避免多人同时出现在画面中。</p></article>
+                <article><img src="/static/user/assets/prep-icon-status-dot.png" alt="" aria-hidden="true"><h3 data-help-i18n="guideNetworkTitle">网络建议</h3><p data-help-i18n="guideNetworkCopy">优先使用稳定 Wi-Fi 或有线网络，面试过程中不要切换网络、刷新页面或关闭浏览器标签页。</p></article>
+            </div>
+        </section>
+
+        <section class="help-section faq-section" id="faq" aria-labelledby="faqTitle">
+            <div class="section-heading">
+                <p>FAQ</p>
+                <h2 id="faqTitle" data-help-i18n="faqTitle">常见问题</h2>
+            </div>
+            <div class="faq-list">
+                <details open><summary data-help-i18n="faqCameraQuestion">摄像头无法打开怎么办？</summary><p data-help-i18n="faqCameraAnswer">先检查浏览器权限是否允许访问摄像头，再确认摄像头未被会议软件占用。修改权限后刷新页面并重新进行设备检测。</p></details>
+                <details><summary data-help-i18n="faqFaceQuestion">人脸识别失败怎么办？</summary><p data-help-i18n="faqFaceAnswer">请调整到光线充足的位置，正对摄像头，摘下遮挡面部的物品，并确保面部完整出现在取景框内。</p></details>
+                <details><summary data-help-i18n="faqLagQuestion">页面卡顿如何处理？</summary><p data-help-i18n="faqLagAnswer">关闭其他高占用程序，保持网络稳定。若仍然卡顿，请暂停无关下载或切换到性能更好的设备。</p></details>
+                <details><summary data-help-i18n="faqMobileQuestion">是否支持手机端？</summary><p data-help-i18n="faqMobileAnswer">当前暂未完成移动端适配，正式面试请使用电脑完成，以获得更稳定的摄像头、麦克风和网络体验。</p></details>
+            </div>
+        </section>
+
+        <section class="notice-panel" aria-labelledby="noticeTitle">
+            <div class="section-heading">
+                <p>Notice</p>
+                <h2 id="noticeTitle" data-help-i18n="noticeTitle">注意事项</h2>
+            </div>
+            <ul>
+                <li data-help-i18n="noticeLight">请保持环境光线充足，面部清晰可见。</li>
+                <li data-help-i18n="noticeFace">请勿遮挡面部，避免佩戴口罩、墨镜等影响识别的物品。</li>
+                <li data-help-i18n="noticePage">面试过程中请勿切换页面、刷新页面或关闭浏览器。</li>
+            </ul>
+        </section>
+    </main>
+
+    <script type="module" src="/static/user/js/help.js?v=20260617helpLangA"></script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# pyenv
+.python-version
+
+# Virtual environments
+.venv/
+.venv_py312/
+.conda/
+
+# IDE - JetBrains
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# IDE - VS Code
+.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Project specific
+/find
+media/
+pytest-cache-files-*/
+*.wav
+*.mp3
+*.mp4
+*.mkv
+*.ogg
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+.runtime/
+pids/
+tmp/
+tmp/candidate_faces/
+tmp/candidates_from_passports*.csv
+tmp/candidates_from_passports*_report.json
+tmp/auth-baseline/
+tmp/auth-after*/
+tmp/auth-wave-after*/
+tmp/auth-wave-dark-after*/
+tmp/auth-wave-deepsea-after*/
+tmp/auth-wave-redesign*/
+tmp/room-after*/
+tmp/prep-volume-after*/
+tmp/volume-hotfix-after*/
+tmp/chrome-auth-*/
+tmp/chrome-auth-wave-*/
+tmp/chrome-auth-wave-dark-*/
+tmp/chrome-auth-wave-deepsea-*/
+tmp/chrome-auth-wave-redesign-*/
+tmp/chrome-auth-wave-debug-*/
+tmp/chrome-room-*/
+tmp/chrome-prep-volume-*/
+tmp/chrome-volume-hotfix-*/
+tmp/chrome-cdp-test-*/
+tmp/edge-auth-baseline-*/
+*.pid
+*.seed
+*.pid.lock
+*.sqlite
+*.sqlite3
+*.db
+
+# Local candidate import source data
+信息.xlsx
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini

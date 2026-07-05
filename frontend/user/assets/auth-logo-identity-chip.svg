@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="66" height="66" viewBox="0 0 66 66" fill="none">
+  <defs>
+    <linearGradient id="chipBg" x1="8" y1="7" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E9FFFB"/>
+      <stop offset="0.38" stop-color="#B7F7FF"/>
+      <stop offset="0.72" stop-color="#B8A7FF"/>
+      <stop offset="1" stop-color="#FF9AD9"/>
+    </linearGradient>
+    <linearGradient id="chipLine" x1="15" y1="51" x2="53" y2="15" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#14E7D4"/>
+      <stop offset="0.42" stop-color="#38A7FF"/>
+      <stop offset="0.74" stop-color="#875CFF"/>
+      <stop offset="1" stop-color="#FF5FC8"/>
+    </linearGradient>
+    <radialGradient id="chipGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(22 20) rotate(44) scale(36 42)">
+      <stop stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="0.45" stop-color="#62F5E7" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#6C61FF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softShadow" x="-12" y="-10" width="90" height="90" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#1B79C6" flood-opacity="0.22"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#42F3E2" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect x="5" y="5" width="56" height="56" rx="17" fill="#F8FEFF"/>
+  <rect x="5" y="5" width="56" height="56" rx="17" fill="url(#chipGlow)"/>
+  <rect x="5.75" y="5.75" width="54.5" height="54.5" rx="16.25" stroke="url(#chipLine)" stroke-opacity="0.55" stroke-width="1.5"/>
+  <g filter="url(#softShadow)">
+    <path d="M33 16.8L47.8 22.4V33.1C47.8 42.3 41.4 49.2 33 52.1C24.6 49.2 18.2 42.3 18.2 33.1V22.4L33 16.8Z" fill="url(#chipBg)" fill-opacity="0.92"/>
+    <path d="M33 16.8L47.8 22.4V33.1C47.8 42.3 41.4 49.2 33 52.1C24.6 49.2 18.2 42.3 18.2 33.1V22.4L33 16.8Z" stroke="url(#chipLine)" stroke-width="1.6" stroke-linejoin="round"/>
+  </g>
+  <path d="M26.4 34.1L30.8 38.4L40.5 27.6" stroke="#083E60" stroke-width="3.3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M14 26H8.8M14 33H9.8M14 40H8.8M52 26H57.2M52 33H56.2M52 40H57.2" stroke="url(#chipLine)" stroke-width="1.7" stroke-linecap="round" opacity="0.7"/>
+  <circle cx="49.7" cy="16.6" r="2.4" fill="#FF66C7"/>
+  <circle cx="16.2" cy="50.4" r="2" fill="#21E6D4"/>
+  <circle cx="49.7" cy="16.6" r="5.5" fill="#FF66C7" opacity="0.13"/>
+  <circle cx="16.2" cy="50.4" r="4.8" fill="#21E6D4" opacity="0.16"/>
+</svg>
