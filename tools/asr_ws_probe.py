@@ -101,12 +101,12 @@ async def _request_json(client: httpx.AsyncClient, method: str, url: str, **kwar
 
 async def _create_session(client: httpx.AsyncClient, base_urls: list[str], index: int, args) -> str:
     headers = {}
-    if args.email and args.password:
+    if args.passport_no and args.password:
         ok, reason, payload = await _request_json(
             client,
             "POST",
             _target(base_urls, index, "/api/user/login"),
-            json={"email": args.email, "password": args.password},
+            json={"passport_no": args.passport_no, "password": args.password},
         )
         if not ok:
             raise RuntimeError(f"login failed: {reason}")
@@ -409,7 +409,13 @@ def main() -> None:
     parser.add_argument("--reuse-created-session", action="store_true", help="Create one session and reuse it for every connection.")
     parser.add_argument("--cancel-created-sessions", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--allow-cloud", action="store_true", help="Required because this opens realtime ASR connections.")
-    parser.add_argument("--email", default="", help="Optional login email used when creating sessions.")
+    parser.add_argument(
+        "--passport-no",
+        "--email",
+        dest="passport_no",
+        default="",
+        help="Optional login passport number used when creating sessions. --email is kept as a compatibility alias.",
+    )
     parser.add_argument("--password", default="", help="Optional login password used when creating sessions.")
     parser.add_argument("--language", default="zh")
     parser.add_argument("--audio-device", default="probe")

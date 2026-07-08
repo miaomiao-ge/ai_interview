@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import time
 from datetime import datetime
 from uuid import uuid4
@@ -39,13 +40,69 @@ _local_last_proctoring_flags = {}
 
 
 def get_authenticated_user_email(request: Request):
+    identity, auth_error = get_authenticated_user_identity(request)
+    if auth_error:
+        return None, auth_error
+    if not identity:
+        return None, {"status": "error", "message": "请先登录"}
+    return identity["subject"], None
+
+
+def normalize_passport_no(value: str) -> str:
+    return re.sub(r"\s+", "", (value or "").strip()).upper()
+
+
+def serialize_user_identity(user: User) -> dict:
+    passport_no = normalize_passport_no(getattr(user, "passport_no", ""))
+    return {
+        "id": getattr(user, "id", None),
+        "subject": passport_no or str(getattr(user, "id", "") or ""),
+        "email": getattr(user, "email", "") or "",
+        "passport_no": passport_no,
+    }
+
+
+def find_user_from_token_payload(db, payload: dict):
+    user_id = payload.get("user_id")
+    if user_id is None:
+        subject = str(payload.get("sub") or "")
+        if subject.isdigit():
+            user_id = int(subject)
+    if user_id is not None:
+        try:
+            user = db.query(User).filter(User.id == int(user_id)).first()
+            if user:
+                return user
+        except (TypeError, ValueError):
+            pass
+
+    passport_no = normalize_passport_no(payload.get("passport_no") or payload.get("sub") or "")
+    if passport_no:
+        user = db.query(User).filter(User.passport_no == passport_no).first()
+        if user:
+            return user
+
+    legacy_email = (payload.get("email") or payload.get("sub") or "").strip().lower()
+    if legacy_email and "@" in legacy_email:
+        return db.query(User).filter(User.email == legacy_email).order_by(User.id.asc()).first()
+    return None
+
+
+def get_authenticated_user_identity(request: Request):
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         return None, {"status": "error", "message": "请先登录"}
     token = auth_header.split(" ")[1]
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload.get("sub"), None
+        db = SessionLocal()
+        try:
+            user = find_user_from_token_payload(db, payload)
+            if not user:
+                return None, {"status": "error", "message": "账号不存在，请重新登录"}
+            return serialize_user_identity(user), None
+        finally:
+            db.close()
     except jwt.ExpiredSignatureError:
         return None, {"status": "error", "message": "身份凭证已过期，请重新登录"}
     except jwt.InvalidTokenError:
@@ -157,9 +214,10 @@ def proctoring_suggestion(flags: list[str]) -> str:
 
 @router.get("/status")
 async def face_status(request: Request):
-    email, auth_error = get_authenticated_user_email(request)
+    identity, auth_error = get_authenticated_user_identity(request)
     if auth_error:
         return auth_error
+    subject = identity["subject"]
 
     if not FACE_VERIFY_ENABLED:
         return {
@@ -177,7 +235,7 @@ async def face_status(request: Request):
 
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.email == email).first()
+        user = db.query(User).filter(User.id == identity["id"]).first()
         enrolled = bool(user and user.face_image_oss_key)
         identity_document_uploaded = enrolled
         return {
@@ -189,7 +247,7 @@ async def face_status(request: Request):
             "face_enrolled_at": user.face_enrolled_at.isoformat() if user and user.face_enrolled_at else "",
             "consent_version": FACE_CONSENT_VERSION,
             "need_reenroll": False,
-            "precheck_valid": bool(get_face_verified(email)),
+            "precheck_valid": bool(get_face_verified(subject)),
         }
     finally:
         db.close()
@@ -202,7 +260,7 @@ async def identity_document_upload(
     document_type: str = Form("passport_or_id"),
     consent_version: str = Form(""),
 ):
-    email, auth_error = get_authenticated_user_email(request)
+    identity, auth_error = get_authenticated_user_identity(request)
     if auth_error:
         return auth_error
     data, error = await read_image_file(image)
@@ -218,7 +276,7 @@ async def identity_document_upload(
 
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.email == email).first()
+        user = db.query(User).filter(User.id == identity["id"]).first()
         if not user:
             return {"status": "error", "code": "user_not_found", "message": "user not found"}
         oss_key = f"face/identity_doc/{user.id}/{uuid4().hex}.jpg"
@@ -243,7 +301,7 @@ async def identity_document_upload(
 
 @router.post("/enroll")
 async def face_enroll(request: Request, image: UploadFile = File(...), consent_version: str = Form("")):
-    email, auth_error = get_authenticated_user_email(request)
+    identity, auth_error = get_authenticated_user_identity(request)
     if auth_error:
         return auth_error
     data, error = await read_image_file(image)
@@ -254,7 +312,7 @@ async def face_enroll(request: Request, image: UploadFile = File(...), consent_v
 
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.email == email).first()
+        user = db.query(User).filter(User.id == identity["id"]).first()
         if not user:
             return {"status": "error", "code": "user_not_found", "message": "用户不存在"}
         oss_key = f"face/enroll/{user.id}/{uuid4().hex}.jpg"
@@ -277,16 +335,17 @@ async def face_enroll(request: Request, image: UploadFile = File(...), consent_v
 
 @router.post("/precheck")
 async def face_precheck(request: Request, image: UploadFile = File(...)):
-    email, auth_error = get_authenticated_user_email(request)
+    identity, auth_error = get_authenticated_user_identity(request)
     if auth_error:
         return auth_error
+    subject = identity["subject"]
     data, error = await read_image_file(image)
     if error:
         return error
     if not FACE_VERIFY_ENABLED:
-        set_face_verified(email, {
+        set_face_verified(subject, {
             "verified": True,
-            "user_email": email,
+            "user_email": subject,
             "score": None,
             "snapshot_oss_key": "",
             "verified_at": datetime.now().isoformat(timespec="seconds"),
@@ -302,7 +361,7 @@ async def face_precheck(request: Request, image: UploadFile = File(...)):
 
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.email == email).first()
+        user = db.query(User).filter(User.id == identity["id"]).first()
         if not user:
             return {"status": "error", "code": "user_not_found", "message": "user not found", "verified": False}
         base_oss_key = user.face_image_oss_key
@@ -338,7 +397,7 @@ async def face_precheck(request: Request, image: UploadFile = File(...)):
 
         payload = {
             "verified": True,
-            "user_email": email,
+            "user_email": subject,
             "score": score,
             "snapshot_oss_key": oss_key,
             "identity_doc_oss_key": base_oss_key,
@@ -346,7 +405,7 @@ async def face_precheck(request: Request, image: UploadFile = File(...)):
             "liveness_passed": bool(living.get("passed")),
             "verified_at": datetime.now().isoformat(timespec="seconds"),
         }
-        set_face_verified(email, payload)
+        set_face_verified(subject, payload)
         return {
             "status": "success",
             "verified": True,
@@ -367,15 +426,16 @@ async def face_proctoring(
     image: UploadFile = File(...),
     client_captured_at: str = Form(""),
 ):
-    email, auth_error = get_authenticated_user_email(request)
+    identity, auth_error = get_authenticated_user_identity(request)
     if auth_error:
         return auth_error
+    subject = identity["subject"]
     if not PROCTORING_ENABLED:
         return {"status": "success", "risk_level": "none", "flags": []}
     if not session_exists(session_id):
         return {"status": "error", "code": "session_not_found", "message": "面试会话不存在或已结束"}
 
-    limit_key = f"{email}:{session_id}"
+    limit_key = f"{subject}:{session_id}"
     now = time.time()
     last_time = _local_proctoring_limit.get(limit_key, 0)
     if now - last_time < PROCTORING_MIN_INTERVAL_SECONDS:
@@ -398,7 +458,7 @@ async def face_proctoring(
         if run_recheck:
             db = SessionLocal()
             try:
-                user = db.query(User).filter(User.email == email).first()
+                user = db.query(User).filter(User.id == identity["id"]).first()
                 base_oss_key = user.face_image_oss_key if user else ""
             finally:
                 db.close()
@@ -429,7 +489,7 @@ async def face_proctoring(
                 db.add(
                     ProctoringEvent(
                         session_id=session_id,
-                        user_email=email,
+                        user_email=subject,
                         event_type=flag,
                         risk_level=risk_level,
                         image_oss_key=oss_key if flags else "",
@@ -441,7 +501,7 @@ async def face_proctoring(
                 db.add(
                     ProctoringEvent(
                         session_id=session_id,
-                        user_email=email,
+                        user_email=subject,
                         event_type="identity_recheck_passed",
                         risk_level="none",
                         image_oss_key=oss_key,

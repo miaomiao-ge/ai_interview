@@ -1,6 +1,7 @@
 import argparse
 import hashlib
 import json
+import re
 import sys
 from dataclasses import dataclass
 from datetime import datetime
@@ -44,8 +45,12 @@ def normalize_email(value) -> str:
     return clean_cell(value).lower()
 
 
+def normalize_passport_no(value) -> str:
+    return re.sub(r"\s+", "", clean_cell(value)).upper()
+
+
 def password_from_passport(passport_no: str) -> str:
-    passport = clean_cell(passport_no)
+    passport = normalize_passport_no(passport_no)
     if len(passport) < 6:
         raise ValueError("护照号码不足 6 位，无法生成初始密码")
     return passport[-6:]
@@ -103,7 +108,7 @@ def read_candidates_from_excel(path: Path) -> list[dict]:
     rows = []
     for row_index in range(2, sheet.max_row + 1):
         real_name = clean_cell(sheet.cell(row_index, headers["姓名"]).value)
-        passport_no = clean_cell(sheet.cell(row_index, headers["护照号码"]).value)
+        passport_no = normalize_passport_no(sheet.cell(row_index, headers["护照号码"]).value)
         email = normalize_email(sheet.cell(row_index, headers["注册账号"]).value)
         remark = clean_cell(sheet.cell(row_index, headers["备注"]).value) if "备注" in headers else ""
 
@@ -181,7 +186,7 @@ def upsert_candidate_after_upload(db, candidate: dict, oss_key: str, source: str
     real_name = candidate["real_name"]
     password = candidate["password"]
 
-    user = db.query(User).filter((User.email == email) | (User.passport_no == passport_no)).first()
+    user = db.query(User).filter(User.passport_no == passport_no).first()
     created = user is None
     if created:
         user = User(
@@ -206,7 +211,7 @@ def upsert_candidate_after_upload(db, candidate: dict, oss_key: str, source: str
         user.source = source
         user.imported_at = now
 
-    # Login uses email/password. Face verification uses the stored OSS key below.
+    # Login uses passport number/password. Face verification uses the stored OSS key below.
     user.face_image_oss_key = oss_key
     user.face_enrolled_at = now
 
@@ -311,7 +316,7 @@ def print_summary(report: dict) -> None:
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Import candidates from 信息.xlsx. Login account is email; password is last 6 passport chars."
+        description="Import candidates from 信息.xlsx. Login account is passport number; password is last 6 passport chars."
     )
     parser.add_argument("--file", default=str(DEFAULT_EXCEL_FILE), help="Excel file path. Default: 项目根目录/信息.xlsx")
     parser.add_argument("--dry-run", action="store_true", help="Validate only. Do not upload OSS or write DB.")

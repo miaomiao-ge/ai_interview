@@ -10,7 +10,7 @@ Cloud-consuming stage:
 Examples:
     python tools/layered_load_test.py --stage ready --requests 300 --concurrency 100
     python tools/layered_load_test.py --stage home --requests 300 --concurrency 100
-    python tools/layered_load_test.py --stage login --email user@example.com --password secret --requests 100 --concurrency 20
+    python tools/layered_load_test.py --stage login --passport-no P1234567 --password 123456 --requests 100 --concurrency 20
     python tools/layered_load_test.py --stage start_interview --allow-cloud --requests 10 --concurrency 2
 """
 
@@ -106,7 +106,7 @@ async def _run_login(client: httpx.AsyncClient, base_urls: list[str], index: int
         client,
         "POST",
         _target(base_urls, index, "/api/user/login"),
-        json={"email": args.email, "password": args.password},
+        json={"passport_no": args.passport_no, "password": args.password},
     )
     latency_ms = (time.perf_counter() - started) * 1000
     if ok and payload.get("token"):
@@ -117,12 +117,12 @@ async def _run_login(client: httpx.AsyncClient, base_urls: list[str], index: int
 async def _run_start_interview(client: httpx.AsyncClient, base_urls: list[str], index: int, args) -> Result:
     started = time.perf_counter()
     headers = {}
-    if args.email and args.password:
+    if args.passport_no and args.password:
         ok, reason, payload = await _request_json(
             client,
             "POST",
             _target(base_urls, index, "/api/user/login"),
-            json={"email": args.email, "password": args.password},
+            json={"passport_no": args.passport_no, "password": args.password},
         )
         if not ok:
             latency_ms = (time.perf_counter() - started) * 1000
@@ -190,8 +190,8 @@ def _print_summary(args, target_count: int, elapsed: float, results: list[Result
 async def run(args) -> None:
     if args.stage in CLOUD_STAGES and not args.allow_cloud:
         raise SystemExit(f"Stage {args.stage} consumes cloud quota. Re-run with --allow-cloud if you really want it.")
-    if args.stage == "login" and (not args.email or not args.password):
-        raise SystemExit("Stage login requires --email and --password.")
+    if args.stage == "login" and (not args.passport_no or not args.password):
+        raise SystemExit("Stage login requires --passport-no and --password.")
 
     base_urls = _base_urls(args.base_url)
     sem = asyncio.Semaphore(args.concurrency)
@@ -211,7 +211,13 @@ def main() -> None:
     parser.add_argument("--requests", type=int, default=300)
     parser.add_argument("--concurrency", type=int, default=50)
     parser.add_argument("--timeout", type=float, default=30.0)
-    parser.add_argument("--email", default="")
+    parser.add_argument(
+        "--passport-no",
+        "--email",
+        dest="passport_no",
+        default="",
+        help="Login passport number. --email is kept as a compatibility alias.",
+    )
     parser.add_argument("--password", default="")
     parser.add_argument("--language", default="zh")
     parser.add_argument("--allow-cloud", action="store_true", help="Allow stages that call LLM/TTS/ASR/OSS.")

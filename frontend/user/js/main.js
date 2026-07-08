@@ -595,8 +595,14 @@ function applyStaticI18n() {
     setText('b', 'featureGrowth', forgotFeatures[2]);
     setText('small', 'featureGrowthDesc', forgotFeatures[2]);
 
-    setText('label[for="emailInput"]', 'authEmail');
-    setPlaceholder('#emailInput', 'authEmailPlaceholder');
+    const accountLabelKey = currentMode === 'login' ? 'authPassport' : 'authEmail';
+    const accountPlaceholderKey = currentMode === 'login' ? 'authPassportPlaceholder' : 'authEmailPlaceholder';
+    setText('label[for="emailInput"]', accountLabelKey);
+    setPlaceholder('#emailInput', accountPlaceholderKey);
+    if (emailInput) {
+        emailInput.type = currentMode === 'login' ? 'text' : 'email';
+        emailInput.autocomplete = currentMode === 'login' ? 'username' : 'email';
+    }
     setText('label[for="codeInput"]', 'authCode');
     setPlaceholder('#codeInput', 'authCodePlaceholder');
     setText('label[for="usernameInput"]', 'authName');
@@ -1555,7 +1561,8 @@ sendCodeBtn.onclick = async () => {
 
 async function handleAuthSubmit(event) {
     if (event) event.preventDefault();
-    const email = emailInput.value.trim();
+    const account = emailInput.value.trim();
+    const email = account;
     const pass = passwordInput.value.trim();
     const user = usernameInput.value.trim();
     const code = codeInput.value.trim();
@@ -1563,7 +1570,8 @@ async function handleAuthSubmit(event) {
 
     try {
         if (currentMode === 'login') {
-            const res = await loginAPI(email, pass);
+            if (!account) throw new Error(t('invalidPassport'));
+            const res = await loginAPI(account, pass);
             if (res.status === "success") {
                 localStorage.setItem('ai_interviewer_token', res.token);
                 authStatus.innerText = `✓ ${t('loginSuccess')}`;

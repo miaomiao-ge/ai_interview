@@ -35,7 +35,7 @@ C:\Users\DELL\anaconda3\envs\torch2\python.exe tools\layered_load_test.py --base
 ```
 
 ```powershell
-C:\Users\DELL\anaconda3\envs\torch2\python.exe tools\layered_load_test.py --stage login --email user@example.com --password your_password --requests 100 --concurrency 20 --timeout 30
+C:\Users\DELL\anaconda3\envs\torch2\python.exe tools\layered_load_test.py --stage login --passport-no P1234567 --password 123456 --requests 100 --concurrency 20 --timeout 30
 ```
 
 ## 3. Cloud-consuming smoke test

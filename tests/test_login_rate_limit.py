@@ -37,7 +37,7 @@ def test_user_login_limit_counts_failures_only(monkeypatch):
     monkeypatch.setattr(user_api, "fixed_window_current_count", lambda key: 0)
     monkeypatch.setattr(user_api, "fixed_window_increment", lambda key, window_seconds: 0)
 
-    key = user_api.redis_key("rate_limit", "login_email", "candidate@example.com")
+    key = user_api.redis_key("rate_limit", "login_passport", "P1234567")
 
     for _ in range(user_api.LOGIN_LIMIT_PER_WINDOW * 2):
         assert user_api.is_login_failure_limited(key, user_api.LOGIN_LIMIT_PER_WINDOW) is False

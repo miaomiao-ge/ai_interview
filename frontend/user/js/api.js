@@ -25,11 +25,11 @@ export async function resetPasswordAPI(email, new_password, code) {
     return await response.json();
 }
 
-export async function loginAPI(email, password) {
+export async function loginAPI(passport_no, password) {
     const response = await fetch('/api/user/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ passport_no, password })
     });
     return await response.json();
 }

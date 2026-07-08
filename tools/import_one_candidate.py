@@ -1,7 +1,7 @@
 """Deprecated single-candidate importer.
 
 The current production flow imports candidates from 信息.xlsx via
-tools/import_candidates.py. Login account is email, and the initial password is
+tools/import_candidates.py. Login account is passport number, and the initial password is
 the last 6 characters of the passport number.
 """
 

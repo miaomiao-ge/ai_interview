@@ -29,7 +29,7 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    email = Column(String(100), unique=True, nullable=False, comment="用户邮箱")
+    email = Column(String(100), index=True, nullable=False, comment="用户邮箱")
     real_name = Column(String(100), default="")
     passport_no = Column(String(100), unique=True, nullable=True)
     password_hash = Column(String(255), nullable=False, comment="密码哈希")
@@ -291,8 +291,22 @@ def ensure_user_face_schema(db):
     if "source" in current_columns:
         db.execute(text("UPDATE users SET source='self_register' WHERE source IS NULL OR source=''"))
 
+    if "email" in current_columns:
+        _drop_unique_indexes_for_column(db, "users", "email")
+        if not _has_index(db, "users", "email"):
+            db.execute(text("ALTER TABLE users ADD INDEX idx_users_email (email)"))
+
     if "passport_no" in current_columns and "candidate_no" in current_columns:
         db.execute(text("UPDATE users SET passport_no=candidate_no WHERE (passport_no IS NULL OR passport_no='') AND candidate_no IS NOT NULL AND candidate_no<>''"))
+
+    if "passport_no" in current_columns:
+        db.execute(
+            text(
+                "UPDATE users SET passport_no=UPPER("
+                "REPLACE(REPLACE(REPLACE(REPLACE(TRIM(passport_no), ' ', ''), CHAR(9), ''), CHAR(10), ''), CHAR(13), '')"
+                ") WHERE passport_no IS NOT NULL AND passport_no<>''"
+            )
+        )
 
     if "face_image_oss_key" in current_columns and "identity_doc_oss_key" in current_columns:
         db.execute(
@@ -397,6 +411,13 @@ def _has_unique_index(db, table_name, column_name):
     return False
 
 
+def _has_index(db, table_name, column_name):
+    for item in _get_index_rows(db, table_name):
+        if item["Column_name"] == column_name:
+            return True
+    return False
+
+
 def _has_duplicate_values(db, table_name, column_name):
     duplicate_row = db.execute(
         text(
@@ -406,6 +427,18 @@ def _has_duplicate_values(db, table_name, column_name):
         )
     ).fetchone()
     return duplicate_row is not None
+
+
+def _drop_unique_indexes_for_column(db, table_name, column_name):
+    index_names = {
+        item["Key_name"]
+        for item in _get_index_rows(db, table_name)
+        if item["Column_name"] == column_name
+        and item["Key_name"] != "PRIMARY"
+        and int(item["Non_unique"]) == 0
+    }
+    for index_name in index_names:
+        db.execute(text(f"ALTER TABLE {table_name} DROP INDEX {index_name}"))
 
 
 def _drop_indexes_for_column(db, table_name, column_name):

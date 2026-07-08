@@ -6,6 +6,7 @@ import jwt
 import os
 import asyncio
 import threading
+import re
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
 from uuid import uuid4
@@ -112,11 +113,55 @@ def normalize_login_identifier(value: str) -> str:
     return (value or "").strip()
 
 
+def normalize_passport_no(value: str) -> str:
+    return re.sub(r"\s+", "", (value or "").strip()).upper()
+
+
+def user_identity_value(user: User) -> str:
+    return normalize_passport_no(getattr(user, "passport_no", "")) or str(getattr(user, "id", "") or "")
+
+
+def serialize_user_identity(user: User) -> dict:
+    return {
+        "id": getattr(user, "id", None),
+        "subject": user_identity_value(user),
+        "email": getattr(user, "email", "") or "",
+        "passport_no": normalize_passport_no(getattr(user, "passport_no", "")),
+        "real_name": getattr(user, "real_name", "") or "",
+    }
+
+
 def find_user_by_login_identifier(db, identifier: str):
-    login_email = normalize_email(identifier)
-    if not login_email:
+    passport_no = normalize_passport_no(identifier)
+    if not passport_no:
         return None
-    return db.query(User).filter(User.email == login_email).first()
+    return db.query(User).filter(User.passport_no == passport_no).first()
+
+
+def find_user_from_token_payload(db, payload: dict):
+    user_id = payload.get("user_id")
+    if user_id is None:
+        subject = str(payload.get("sub") or "")
+        if subject.isdigit():
+            user_id = int(subject)
+    if user_id is not None:
+        try:
+            user = db.query(User).filter(User.id == int(user_id)).first()
+            if user:
+                return user
+        except (TypeError, ValueError):
+            pass
+
+    passport_no = normalize_passport_no(payload.get("passport_no") or payload.get("sub") or "")
+    if passport_no:
+        user = db.query(User).filter(User.passport_no == passport_no).first()
+        if user:
+            return user
+
+    legacy_email = normalize_email(payload.get("email") or payload.get("sub") or "")
+    if legacy_email and "@" in legacy_email:
+        return db.query(User).filter(User.email == legacy_email).order_by(User.id.asc()).first()
+    return None
 
 
 def _otp_key(email: str, purpose: str) -> str:
@@ -214,7 +259,8 @@ class RegisterRequest(BaseModel):
     code: str
 
 class LoginRequest(BaseModel):
-    email: str
+    email: str = ""
+    passport_no: str = ""
     password: str
 
 class ResetPasswordRequest(BaseModel):
@@ -240,19 +286,35 @@ class SubmitAnswerRequest(BaseModel):
     text: str = ""
 
 
-def get_authenticated_user_email(request: Request) -> Tuple[Optional[str], Optional[dict]]:
+def get_authenticated_user_identity(request: Request) -> Tuple[Optional[dict], Optional[dict]]:
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
-        return "anonymous@unknown.com", None
+        return None, None
 
     token = auth_header.split(" ")[1]
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload.get("sub") or "anonymous@unknown.com", None
+        db = SessionLocal()
+        try:
+            user = find_user_from_token_payload(db, payload)
+            if not user:
+                return None, {"status": "error", "message": "账号不存在，请重新登录"}
+            return serialize_user_identity(user), None
+        finally:
+            db.close()
     except jwt.ExpiredSignatureError:
         return None, {"status": "error", "message": "身份凭证已过期，请重新登录"}
     except jwt.InvalidTokenError:
         return None, {"status": "error", "message": "非法的身份凭证"}
+
+
+def get_authenticated_user_email(request: Request) -> Tuple[Optional[str], Optional[dict]]:
+    identity, auth_error = get_authenticated_user_identity(request)
+    if auth_error:
+        return None, auth_error
+    if not identity:
+        return "anonymous@unknown.com", None
+    return identity["subject"], None
 
 
 def _safe_media_extension(ext: str, content_type: str) -> str:
@@ -545,10 +607,10 @@ async def reset_password(req: ResetPasswordRequest):
 
 @router.post("/login")
 async def login(req: LoginRequest, request: Request = None):
-    login_id = normalize_login_identifier(req.email)
-    login_key = normalize_email(login_id) or login_id
+    login_id = normalize_login_identifier(req.passport_no or req.email)
+    login_key = normalize_passport_no(login_id) or login_id
     client_ip = get_client_ip(request)
-    email_limit_key = redis_key("rate_limit", "login_email", login_key)
+    email_limit_key = redis_key("rate_limit", "login_passport", login_key)
     ip_limit_key = redis_key("rate_limit", "login_ip", client_ip)
     if is_login_failure_limited(email_limit_key, LOGIN_LIMIT_PER_WINDOW):
         return {"status": "error", "message": "登录尝试过于频繁，请稍后再试。"}
@@ -561,7 +623,7 @@ async def login(req: LoginRequest, request: Request = None):
         if not user or user.password_hash != hash_password(req.password):
             record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
             record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
-            return {"status": "error", "message": "邮箱或密码错误！"}
+            return {"status": "error", "message": "护照号或密码错误！"}
 
         if getattr(user, "status", "active") != "active":
             record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
@@ -569,10 +631,13 @@ async def login(req: LoginRequest, request: Request = None):
             return {"status": "error", "code": "user_disabled", "message": "账号已停用，请联系管理员"}
 
         expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+        identity = serialize_user_identity(user)
         payload = {
-            "sub": user.email,
+            "sub": str(user.id),
+            "user_id": user.id,
+            "email": user.email or "",
             "username": user.real_name,
-            "passport_no": user.passport_no or "",
+            "passport_no": identity["passport_no"],
             "exp": expire
         }
         real_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
@@ -583,7 +648,8 @@ async def login(req: LoginRequest, request: Request = None):
             "status": "success",
             "token": real_token,
             "username": user.real_name,
-            "passport_no": user.passport_no or "",
+            "email": user.email or "",
+            "passport_no": identity["passport_no"],
         }
     finally:
         db.close()
@@ -591,15 +657,15 @@ async def login(req: LoginRequest, request: Request = None):
 # 接收前端传来的语言
 @router.post("/start_interview")
 async def start_interview(req: StartInterviewRequest, request: Request):
-    user_email, auth_error = get_authenticated_user_email(request)
+    identity, auth_error = get_authenticated_user_identity(request)
     if auth_error:
         return auth_error
-    if not user_email or user_email == "anonymous@unknown.com":
+    if not identity:
         return {"status": "error", "code": "login_required", "message": "请先登录"}
 
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.email == user_email).first()
+        user = db.query(User).filter(User.id == identity["id"]).first()
         if not user:
             return {"status": "error", "code": "user_not_found", "message": "账号不存在，请联系管理员"}
         if getattr(user, "status", "active") != "active":
@@ -608,7 +674,8 @@ async def start_interview(req: StartInterviewRequest, request: Request):
     finally:
         db.close()
 
-    face_verified = get_face_verified(user_email)
+    user_subject = identity["subject"]
+    face_verified = get_face_verified(user_subject)
     if FACE_VERIFY_ENABLED and not has_face_image:
         return {
             "status": "error",
@@ -631,7 +698,7 @@ async def start_interview(req: StartInterviewRequest, request: Request):
         session_id, first_question = await run_llm_task(create_interview_session, req.language, session_id)
         update_session_runtime(
             session_id,
-            user_email=user_email,
+            user_email=user_subject,
             face_verify=face_verified or {"verified": False},
         )
 
