@@ -322,7 +322,7 @@ def load_runtime_prompts() -> tuple[str, str]:
     return base_prompt, eval_prompt
 
 
-def load_questions():
+def load_questions(lang: str = "zh"):
     db = SessionLocal()
     categories = {
         "个人基本情况与留学动机": [],
@@ -350,7 +350,10 @@ def load_questions():
                 questions = db.query(QuestionBank).all()
         for q in questions:
             if q.category in categories:
-                categories[q.category].append(q.content)
+                question_text = getattr(q, "content_en", "") if lang == "en" else q.content
+                question_text = (question_text or q.content or "").strip()
+                if question_text:
+                    categories[q.category].append(question_text)
         if not categories["综合素质"]:
             categories["综合素质"].append("你如何平衡学习和课余生活？")
         return categories
@@ -435,7 +438,7 @@ def _save_session_state(state: InterviewSessionState) -> None:
 
 
 def _build_question_sequence(lang: str) -> list[str]:
-    categories_dict = load_questions()
+    categories_dict = load_questions(lang)
     first_q_zh = "你好！欢迎参加西电的面试。首先，请简单介绍一下你自己，包括你的国籍、毕业院校以及个人兴趣爱好。"
     first_q_en = "Hello! Welcome to the Xidian University interview. First, please briefly introduce yourself, including your nationality, graduated school, and personal hobbies."
     first_q = first_q_zh if lang == "zh" else first_q_en

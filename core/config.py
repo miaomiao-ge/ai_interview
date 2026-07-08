@@ -1,8 +1,12 @@
 import os
 import json
 from dotenv import load_dotenv
-from aliyunsdkcore.client import AcsClient
-from aliyunsdkcore.request import CommonRequest
+try:
+    from aliyunsdkcore.client import AcsClient
+    from aliyunsdkcore.request import CommonRequest
+except ImportError:
+    AcsClient = None
+    CommonRequest = None
 # 自动寻找并加载项目根目录的 .env 文件
 load_dotenv()
 
@@ -159,6 +163,10 @@ def get_aliyun_token():
     global _cached_token
     if _cached_token:
         return _cached_token
+
+    if AcsClient is None or CommonRequest is None:
+        print("Failed to get Aliyun token: aliyunsdkcore is not installed", flush=True)
+        return ""
 
     try:
         # 创建客户端实例

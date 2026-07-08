@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 
 from dotenv import load_dotenv
-from sqlalchemy import Column, Date, DateTime, Float, Integer, String, Text, create_engine, inspect, text
+from sqlalchemy import Column, Date, DateTime, Float, Integer, String, Text, UniqueConstraint, create_engine, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from core.config import (
@@ -123,10 +123,17 @@ class ProctoringEvent(Base):
 # 题库表
 class QuestionBank(Base):
     __tablename__ = "question_bank"
+    __table_args__ = (UniqueConstraint("category", "question_no", name="uq_question_bank_category_no"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     category = Column(String(100), index=True, comment="考核维度，如综合素质")
+    question_no = Column(Integer, nullable=True, comment="题目在原始题库中的序号")
     content = Column(Text, comment="题目内容")
+    content_en = Column(Text, comment="英文题目内容")
+    source_file = Column(String(255), default="", comment="题库来源文件")
+    source_row = Column(Integer, nullable=True, comment="题库来源行号")
+    source_hash = Column(String(64), default="", comment="题库内容哈希")
+    updated_at = Column(DateTime, nullable=True, comment="更新时间")
 
 
 # Prompt 系统提示词配置表
@@ -354,6 +361,26 @@ def ensure_proctoring_event_schema(db):
     db.commit()
 
 
+def ensure_question_bank_schema(db):
+    columns = _get_column_names(db, "question_bank")
+    schema_changes = [
+        ("question_no", "ALTER TABLE question_bank ADD COLUMN question_no INT NULL"),
+        ("content_en", "ALTER TABLE question_bank ADD COLUMN content_en TEXT"),
+        ("source_file", "ALTER TABLE question_bank ADD COLUMN source_file VARCHAR(255) DEFAULT ''"),
+        ("source_row", "ALTER TABLE question_bank ADD COLUMN source_row INT NULL"),
+        ("source_hash", "ALTER TABLE question_bank ADD COLUMN source_hash VARCHAR(64) DEFAULT ''"),
+        ("updated_at", "ALTER TABLE question_bank ADD COLUMN updated_at DATETIME NULL"),
+    ]
+
+    altered = False
+    for column_name, sql_statement in schema_changes:
+        if column_name not in columns:
+            db.execute(text(sql_statement))
+            altered = True
+    if altered:
+        db.commit()
+
+
 def _get_column_names(db, table_name):
     columns = db.execute(text(f"SHOW COLUMNS FROM {table_name}")).mappings().all()
     return {item["Field"] for item in columns}
@@ -480,16 +507,11 @@ def ensure_admin_action_log_schema(db):
     db.commit()
 
 
-DEFAULT_MYSQL_URL = "mysql+pymysql://ai_interview:AiInterview_DB_2026!@127.0.0.1:3306/interview_db?charset=utf8mb4"
-
-
 def get_mysql_url() -> str:
     mysql_url = os.getenv("MYSQL_URL") or MYSQL_URL_ENV
     if mysql_url:
         return mysql_url
-    if APP_ENV == "production":
-        raise RuntimeError("MYSQL_URL is required when APP_ENV=production")
-    return DEFAULT_MYSQL_URL
+    raise RuntimeError("MYSQL_URL is required. Put the full SQLAlchemy connection URL in .env.")
 
 
 MYSQL_URL = get_mysql_url()
@@ -515,6 +537,7 @@ def _legacy_auto_migrate_init_db():
         ensure_interview_record_schema(db)
         ensure_user_face_schema(db)
         ensure_proctoring_event_schema(db)
+        ensure_question_bank_schema(db)
         ensure_admin_user_schema(db)
         ensure_admin_action_log_schema(db)
 
@@ -659,6 +682,7 @@ def migrate_db(seed_super_admin: bool = True) -> None:
         ensure_interview_record_schema(db)
         ensure_user_face_schema(db)
         ensure_proctoring_event_schema(db)
+        ensure_question_bank_schema(db)
         ensure_admin_user_schema(db)
         ensure_admin_action_log_schema(db)
         if seed_super_admin:
