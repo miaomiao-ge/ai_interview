@@ -1,4 +1,5 @@
 import base64
+import hashlib
 from types import SimpleNamespace
 
 import pytest
@@ -100,6 +101,8 @@ def test_upsert_application_maps_all_fields_without_photo():
         db,
         {
             "applicationNo": "20260600003",
+            "id": "APP-UNIQUE-7",
+            "flag": "1",
             "name": "DU TEST",
             "familyName": "TEST",
             "givenName": "DU",
@@ -118,11 +121,19 @@ def test_upsert_application_maps_all_fields_without_photo():
     assert db.committed is True
     assert db.user.email == "student@example.com"
     assert db.user.xidian_application_no == "20260600003"
+    assert db.user.xidian_application_id == "APP-UNIQUE-7"
+    assert db.user.xidian_recommend_flag == "1"
     assert db.user.nationality == "奥兰群岛"
     assert db.user.passport_expiry.isoformat() == "2026-07-03"
     assert db.user.password_hash == sync._password_hash_from_passport("AQ1234567")
 
 
-def test_password_hash_from_passport_rejects_short_passport_number():
-    with pytest.raises(ValueError, match="不足 6 位"):
-        sync._password_hash_from_passport("A1234")
+def test_password_hash_from_passport_uses_uppercase_passport_plus_2026():
+    assert sync._password_hash_from_passport(" aq1234567 ") == hashlib.sha256(
+        "AQ12345672026".encode("utf-8")
+    ).hexdigest()
+
+
+def test_password_hash_from_passport_rejects_empty_passport_number():
+    with pytest.raises(ValueError, match="为空"):
+        sync._password_hash_from_passport(" ")

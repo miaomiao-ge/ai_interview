@@ -19,6 +19,7 @@ from core.oss_utils import upload_bytes_to_oss
 
 
 DEFAULT_EXCEL_FILE = PROJECT_ROOT / "信息.xlsx"
+INITIAL_PASSWORD_SUFFIX = "2026"
 REQUIRED_HEADERS = ["姓名", "护照号码", "注册账号", "人脸照片"]
 
 
@@ -51,9 +52,9 @@ def normalize_passport_no(value) -> str:
 
 def password_from_passport(passport_no: str) -> str:
     passport = normalize_passport_no(passport_no)
-    if len(passport) < 6:
-        raise ValueError("护照号码不足 6 位，无法生成初始密码")
-    return passport[-6:]
+    if not passport:
+        raise ValueError("护照号码为空，无法生成初始密码")
+    return f"{passport}{INITIAL_PASSWORD_SUFFIX}"
 
 
 def load_workbook(path: Path):
@@ -143,8 +144,6 @@ def validate_candidates(rows: list[dict]) -> list[dict]:
             row_errors.append("姓名为空")
         if not passport_no:
             row_errors.append("护照号码为空")
-        elif len(passport_no) < 6:
-            row_errors.append("护照号码不足 6 位")
         if not email:
             row_errors.append("注册账号/邮箱为空")
         if not row["image"]:
@@ -316,7 +315,7 @@ def print_summary(report: dict) -> None:
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Import candidates from 信息.xlsx. Login account is passport number; password is last 6 passport chars."
+        description="Import candidates from 信息.xlsx. Login account is passport number; password is uppercase passport number plus 2026."
     )
     parser.add_argument("--file", default=str(DEFAULT_EXCEL_FILE), help="Excel file path. Default: 项目根目录/信息.xlsx")
     parser.add_argument("--dry-run", action="store_true", help="Validate only. Do not upload OSS or write DB.")

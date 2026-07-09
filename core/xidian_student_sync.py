@@ -2,10 +2,13 @@ import hashlib
 import re
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
+from sqlalchemy import or_
 from core.config import FACE_OSS_BUCKET_NAME, FACE_OSS_ENDPOINT
 from core.database import SessionLocal, User
 from core.oss_utils import upload_bytes_to_oss
 from core.xidian_student_service import decode_official_photo, iter_applications
+
+INITIAL_PASSWORD_SUFFIX = "2026"
 
 
 @dataclass
@@ -33,22 +36,26 @@ def _date(record: dict, key: str) -> date | None:
 
 def _password_hash_from_passport(passport_no: str) -> str:
     passport_no = normalize_passport_no(passport_no)
-    if len(passport_no) < 6:
-        raise ValueError("护照号码不足 6 位，无法生成登录密码")
-    return hashlib.sha256(passport_no[-6:].encode("utf-8")).hexdigest()
+    if not passport_no:
+        raise ValueError("护照号码为空，无法生成登录密码")
+    initial_password = f"{passport_no}{INITIAL_PASSWORD_SUFFIX}"
+    return hashlib.sha256(initial_password.encode("utf-8")).hexdigest()
 
 
-def _find_user(db, passport_no: str, application_no: str):
-    matches = (
-        db.query(User)
-        .filter(
-            (User.passport_no == passport_no)
-            | (User.xidian_application_no == application_no)
-        )
-        .all()
-    )
+def _find_user(db, passport_no: str, application_no: str, application_id: str):
+    conditions = []
+    if passport_no:
+        conditions.append(User.passport_no == passport_no)
+    if application_no:
+        conditions.append(User.xidian_application_no == application_no)
+    if application_id:
+        conditions.append(User.xidian_application_id == application_id)
+    if not conditions:
+        return None
+
+    matches = db.query(User).filter(or_(*conditions)).all()
     if len(matches) > 1:
-        raise ValueError("护照号和申请编号分别属于不同用户，拒绝自动合并")
+        raise ValueError("护照号、申请编号或申请唯一标识分别属于不同用户，拒绝自动合并")
     return matches[0] if matches else None
 
 
@@ -59,12 +66,14 @@ def upsert_application(db, record: dict, upload_photo: bool = True) -> str:
         raise ValueError("申请数据缺少有效邮箱")
     if not application_no:
         raise ValueError("申请数据缺少申请编号")
+    application_id = _text(record, "id", 100)
+    recommend_flag = _text(record, "flag", 20)
     passport_no = normalize_passport_no(_text(record, "passportNumber", 100))
     if not passport_no:
         raise ValueError("申请数据缺少护照号码")
     password_hash = _password_hash_from_passport(passport_no)
 
-    user = _find_user(db, passport_no, application_no)
+    user = _find_user(db, passport_no, application_no, application_id)
     created = user is None
     if created:
         user = User(email=email, password_hash=password_hash, status="active")
@@ -87,6 +96,8 @@ def upsert_application(db, record: dict, upload_photo: bool = True) -> str:
     user.passport_expiry = _date(record, "expiryDate")
     user.birthday = _date(record, "birthday")
     user.xidian_application_no = application_no
+    user.xidian_application_id = application_id or None
+    user.xidian_recommend_flag = recommend_flag
     user.xidian_application_status = _text(record, "status", 50)
     user.source = "xidian_api"
     user.imported_at = now

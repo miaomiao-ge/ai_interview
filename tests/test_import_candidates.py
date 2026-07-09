@@ -10,10 +10,10 @@ if str(PROJECT_ROOT) not in sys.path:
 from tools.import_candidates import password_from_passport
 
 
-def test_password_from_passport_uses_last_six_characters():
-    assert password_from_passport("AB1234567") == "234567"
+def test_password_from_passport_uses_uppercase_passport_plus_2026():
+    assert password_from_passport(" ab1234567 ") == "AB12345672026"
 
 
-def test_password_from_passport_rejects_values_shorter_than_six_characters():
-    with pytest.raises(ValueError, match="不足 6 位"):
-        password_from_passport("A1234")
+def test_password_from_passport_rejects_empty_passport_number():
+    with pytest.raises(ValueError, match="为空"):
+        password_from_passport(" ")

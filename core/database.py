@@ -38,6 +38,8 @@ class User(Base):
     face_enrolled_at = Column(DateTime, nullable=True)
     face_image_source = Column(String(50), default="")
     xidian_application_no = Column(String(50), unique=True, nullable=True)
+    xidian_application_id = Column(String(100), unique=True, nullable=True)
+    xidian_recommend_flag = Column(String(20), default="")
     xidian_application_status = Column(String(50), default="")
     family_name = Column(String(100), default="")
     given_name = Column(String(100), default="")
@@ -260,6 +262,8 @@ def ensure_user_face_schema(db):
         ("face_enrolled_at", "ALTER TABLE users ADD COLUMN face_enrolled_at DATETIME NULL"),
         ("face_image_source", "ALTER TABLE users ADD COLUMN face_image_source VARCHAR(50) DEFAULT ''"),
         ("xidian_application_no", "ALTER TABLE users ADD COLUMN xidian_application_no VARCHAR(50) NULL"),
+        ("xidian_application_id", "ALTER TABLE users ADD COLUMN xidian_application_id VARCHAR(100) NULL"),
+        ("xidian_recommend_flag", "ALTER TABLE users ADD COLUMN xidian_recommend_flag VARCHAR(20) DEFAULT ''"),
         ("xidian_application_status", "ALTER TABLE users ADD COLUMN xidian_application_status VARCHAR(50) DEFAULT ''"),
         ("family_name", "ALTER TABLE users ADD COLUMN family_name VARCHAR(100) DEFAULT ''"),
         ("given_name", "ALTER TABLE users ADD COLUMN given_name VARCHAR(100) DEFAULT ''"),
@@ -333,6 +337,11 @@ def ensure_user_face_schema(db):
         if _has_duplicate_values(db, "users", "xidian_application_no"):
             raise RuntimeError("Duplicate users.xidian_application_no values prevent unique application records")
         db.execute(text("ALTER TABLE users ADD UNIQUE INDEX uq_users_xidian_application_no (xidian_application_no)"))
+
+    if "xidian_application_id" in current_columns and not _has_unique_index(db, "users", "xidian_application_id"):
+        if _has_duplicate_values(db, "users", "xidian_application_id"):
+            raise RuntimeError("Duplicate users.xidian_application_id values prevent unique application ids")
+        db.execute(text("ALTER TABLE users ADD UNIQUE INDEX uq_users_xidian_application_id (xidian_application_id)"))
 
     obsolete_columns = [
         "account",

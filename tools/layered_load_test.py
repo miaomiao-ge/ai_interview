@@ -10,7 +10,7 @@ Cloud-consuming stage:
 Examples:
     python tools/layered_load_test.py --stage ready --requests 300 --concurrency 100
     python tools/layered_load_test.py --stage home --requests 300 --concurrency 100
-    python tools/layered_load_test.py --stage login --passport-no P1234567 --password 123456 --requests 100 --concurrency 20
+    python tools/layered_load_test.py --stage login --passport-no P1234567 --password P12345672026 --requests 100 --concurrency 20
     python tools/layered_load_test.py --stage start_interview --allow-cloud --requests 10 --concurrency 2
 """
 

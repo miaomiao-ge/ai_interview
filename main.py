@@ -18,7 +18,7 @@ from core.concurrency_guard import get_capacity_snapshot
 from core.database import database_ready, init_db
 from core.interview_job_service import get_worker_queue_snapshot
 from core.redis_utils import ensure_redis_available, redis_available
-from routers import admin_api, face_api, user_api
+from routers import admin_api, external_api, face_api, user_api
 
 
 def register_static_mime_types():
@@ -34,6 +34,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 app.include_router(user_api.router, prefix="/api/user", tags=["用户端接口"])
 app.include_router(admin_api.router, prefix="/api/admin", tags=["管理端接口"])
 app.include_router(face_api.router, prefix="/api/face", tags=["人脸核验与监考"])
+app.include_router(external_api.router, prefix="/api/external", tags=["对外系统接口"])
 
 class CachedStaticFiles(StaticFiles):
     async def get_response(self, path, scope):
