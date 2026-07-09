@@ -17,6 +17,10 @@ export class InterviewMediaManager {
         this.asrWebSocket = null;
         this.asrReplyPromise = null;
         this.asrReplyResolved = false;
+        this.answerCaptureActive = false;
+        this.isAITTSPlaying = false;
+        this.micMuted = false;
+        this.ttsPlaybackId = 0;
         this.audioContext = null;
         this.audioSourceNode = null;
         this.audioProcessorNode = null;
@@ -332,6 +336,23 @@ export class InterviewMediaManager {
         return this.localStream?.getAudioTracks() || [];
     }
 
+    getAppBasePath() {
+        const path = window.location.pathname || "";
+        return path === "/interview" || path.startsWith("/interview/") ? "/interview" : "";
+    }
+
+    resolveAppUrl(url) {
+        const value = String(url || "").trim();
+        if (!value || /^[a-z][a-z0-9+.-]*:/i.test(value)) {
+            return value;
+        }
+        const basePath = this.getAppBasePath();
+        if (!basePath || value.startsWith(`${basePath}/`)) {
+            return value;
+        }
+        return value.startsWith("/") ? `${basePath}${value}` : value;
+    }
+
     buildRecordingStream() {
         const stream = new MediaStream();
         this.getAudioTracksForCapture().forEach((track) => stream.addTrack(track));
@@ -398,6 +419,9 @@ export class InterviewMediaManager {
         recognition.continuous = true;
         recognition.interimResults = true;
         recognition.onresult = (event) => {
+            if (this.isAITTSPlaying || !this.answerCaptureActive) {
+                return;
+            }
             let transcript = "";
             for (let index = 0; index < event.results.length; index++) {
                 transcript += event.results[index][0].transcript;
@@ -426,7 +450,7 @@ export class InterviewMediaManager {
     }
 
     startAnswerAudioRecording() {
-        if (!this.localStream || !window.MediaRecorder) {
+        if (!this.localStream || !window.MediaRecorder || this.isAITTSPlaying || this.answerRecorder) {
             return;
         }
         const audioTracks = this.getAudioTracksForCapture();
@@ -475,7 +499,7 @@ export class InterviewMediaManager {
             language: this.language || 'zh',
             audio_device: this.selectedAudioDeviceLabel || ''
         });
-        return `${protocol}//${window.location.host}/api/user/ws/asr?${params.toString()}`;
+        return `${protocol}//${window.location.host}${this.getAppBasePath()}/api/user/ws/asr?${params.toString()}`;
     }
 
     downsampleTo16k(buffer, inputSampleRate) {
@@ -510,7 +534,7 @@ export class InterviewMediaManager {
     }
 
     async startRealtimeASR() {
-        if (!this.localStream || !this.sessionId) {
+        if (!this.localStream || !this.sessionId || this.isAITTSPlaying || !this.answerCaptureActive) {
             return;
         }
         this.stopRealtimeAudioNodes();
@@ -539,6 +563,9 @@ export class InterviewMediaManager {
                 }
 
                 if (data.type === 'asr_partial' || data.type === 'asr_final') {
+                    if (this.isAITTSPlaying || !this.answerCaptureActive) {
+                        return;
+                    }
                     if (data.text) {
                         this.realtimeTranscript = data.text;
                         this.currentTranscript = this.pickBetterTranscript(this.currentTranscript, this.realtimeTranscript);
@@ -587,6 +614,9 @@ export class InterviewMediaManager {
     }
 
     async startRealtimeAudioProcessor() {
+        if (this.isAITTSPlaying || !this.answerCaptureActive || this.micMuted) {
+            return;
+        }
         const audioTracks = this.getAudioTracksForCapture();
         if (!audioTracks.length || !this.asrWebSocket || this.asrWebSocket.readyState !== WebSocket.OPEN) {
             return;
@@ -609,6 +639,9 @@ export class InterviewMediaManager {
 
         this.audioProcessorNode.onaudioprocess = (event) => {
             if (!this.asrWebSocket || this.asrWebSocket.readyState !== WebSocket.OPEN) {
+                return;
+            }
+            if (this.isAITTSPlaying || !this.answerCaptureActive || this.micMuted) {
                 return;
             }
             const input = event.inputBuffer.getChannelData(0);
@@ -667,9 +700,12 @@ export class InterviewMediaManager {
     }
 
     // 浏览器内置机械音 (作为最终兜底)
-    speak(text, is_end = false) {
-        if (this.onTTSStart) this.onTTSStart();
-        this.setMicMuted(true);
+    speak(text, is_end = false, playbackId = null) {
+        const activePlaybackId = playbackId || this.beginTTSPlayback();
+        if (activePlaybackId !== this.ttsPlaybackId) {
+            return;
+        }
+        this.pauseAliyunTTSPlayer();
 
         const utterance = new SpeechSynthesisUtterance(text);
         const lang = window.interviewLanguage || 'zh';
@@ -679,15 +715,7 @@ export class InterviewMediaManager {
         window._currentUtterance = utterance;
         utterance.onboundary = () => { window.dispatchEvent(new CustomEvent('ai_speaking_syllable')); };
 
-        const resumeUI = () => {
-            if (is_end) {
-                if (this.onInterviewEnd) this.onInterviewEnd();
-            } else {
-                this.setMicMuted(false);
-                this.sendAnswerStartedSignal();
-                if (this.onTTSEnd) this.onTTSEnd();
-            }
-        };
+        const resumeUI = () => this.finishTTSPlayback(activePlaybackId, is_end);
 
         utterance.onend = () => { resumeUI(); };
         utterance.onerror = () => {
@@ -699,12 +727,98 @@ export class InterviewMediaManager {
     }
 
     setMicMuted(isMuted) {
-        if (this.localStream && this.localStream.getAudioTracks().length > 0) {
-            this.localStream.getAudioTracks()[0].enabled = !isMuted;
+        this.micMuted = !!isMuted;
+        [this.localStream, this.processedAudioStream].forEach((stream) => {
+            (stream?.getAudioTracks?.() || []).forEach((track) => {
+                if (track.readyState === "live") {
+                    track.enabled = !this.micMuted;
+                }
+            });
+        });
+        if (this.onAudioLevel && this.micMuted) {
+            this.onAudioLevel({ level: 0, muted: true, available: true });
         }
     }
 
+    stopAnswerCapture({ discard = true } = {}) {
+        this.answerCaptureActive = false;
+        if (this.recognition) {
+            try {
+                this.recognition.onresult = null;
+                this.recognition.onerror = null;
+                this.recognition.stop();
+            } catch (error) {}
+            this.recognition = null;
+        }
+        this.stopRealtimeAudioNodes();
+        if (this.asrWebSocket) {
+            this.asrReplyResolved = true;
+            try {
+                if (this.asrWebSocket.readyState === WebSocket.OPEN || this.asrWebSocket.readyState === WebSocket.CONNECTING) {
+                    this.asrWebSocket.close();
+                }
+            } catch (error) {}
+        }
+        this.asrWebSocket = null;
+        this.asrReplyPromise = null;
+        if (this.answerRecorder) {
+            try {
+                this.answerRecorder.ondataavailable = null;
+                this.answerRecorder.onstop = null;
+                if (this.answerRecorder.state !== "inactive") {
+                    this.answerRecorder.stop();
+                }
+            } catch (error) {}
+            this.answerRecorder = null;
+        }
+        if (discard) {
+            this.answerChunks = [];
+        }
+    }
+
+    beginTTSPlayback() {
+        const playbackId = ++this.ttsPlaybackId;
+        this.isAITTSPlaying = true;
+        this.stopAnswerCapture({ discard: true });
+        this.setMicMuted(true);
+        this.pauseAliyunTTSPlayer();
+        window.speechSynthesis.cancel();
+        if (this.onTTSStart) this.onTTSStart();
+        return playbackId;
+    }
+
+    finishTTSPlayback(playbackId, is_end = false) {
+        if (playbackId !== this.ttsPlaybackId) {
+            return;
+        }
+        this.isAITTSPlaying = false;
+        if (is_end) {
+            if (this.onInterviewEnd) this.onInterviewEnd();
+            return;
+        }
+        if (this.onTTSEnd) this.onTTSEnd();
+        this.sendAnswerStartedSignal();
+    }
+
+    pauseAliyunTTSPlayer() {
+        const player = window._globalTtsPlayer;
+        if (!player) {
+            return;
+        }
+        try {
+            player.pause();
+            player.onended = null;
+            player.onerror = null;
+        } catch (error) {}
+    }
+
     sendAnswerStartedSignal() {
+        if (this.isAITTSPlaying || this.answerCaptureActive) {
+            return;
+        }
+        this.stopAnswerCapture({ discard: true });
+        this.answerCaptureActive = true;
+        this.setMicMuted(false);
         this.currentTranscript = "";
         this.browserTranscript = "";
         this.realtimeTranscript = "";
@@ -725,11 +839,12 @@ export class InterviewMediaManager {
     }
 
     sendFinishSignal() {
-        if (this.isSubmittingAnswer) {
+        if (this.isSubmittingAnswer || this.isAITTSPlaying || !this.answerCaptureActive) {
             return;
         }
         this.setMicMuted(true);
         this.isSubmittingAnswer = true;
+        this.answerCaptureActive = false;
         if (this.recognition) {
             try {
                 this.recognition.stop();
@@ -756,6 +871,7 @@ export class InterviewMediaManager {
             }
             if (handledByRealtimeReply) {
                 this.isSubmittingAnswer = false;
+                this.stopAnswerCapture({ discard: true });
                 this.currentTranscript = "";
                 this.browserTranscript = "";
                 this.realtimeTranscript = "";
@@ -784,6 +900,7 @@ export class InterviewMediaManager {
             this.speak(this.language === 'en' ? "Sorry, network error. Please try again." : "网络异常，请稍后重试。", false);
         } finally {
             this.isSubmittingAnswer = false;
+            this.stopAnswerCapture({ discard: true });
             this.currentTranscript = "";
             this.browserTranscript = "";
             this.realtimeTranscript = "";
@@ -808,20 +925,7 @@ export class InterviewMediaManager {
     }
 
     stop() {
-        if (this.recognition) {
-            try { this.recognition.stop(); } catch(e) {}
-            this.recognition = null;
-        }
-        if (this.answerRecorder && this.answerRecorder.state !== "inactive") {
-            try { this.answerRecorder.stop(); } catch(e) {}
-            this.answerRecorder = null;
-            this.answerChunks = [];
-        }
-        this.stopRealtimeAudioNodes();
-        if (this.asrWebSocket && this.asrWebSocket.readyState === WebSocket.OPEN) {
-            this.asrWebSocket.close();
-        }
-        this.asrWebSocket = null;
+        this.stopAnswerCapture({ discard: true });
         this.stopVolumeMonitor();
         this.closeBoostedAudioStream();
         if (this.localStream) {
@@ -857,45 +961,53 @@ export class InterviewMediaManager {
     }
 
     playAliyunTTS(audioUrl, backupText, is_end = false, retry = 0) {
+        const playbackId = retry === 0 ? this.beginTTSPlayback() : this.ttsPlaybackId;
+        if (playbackId !== this.ttsPlaybackId) {
+            return;
+        }
         console.log(`🔊 准备播放阿里云 TTS 音频 (第${retry + 1}次尝试):`, audioUrl);
-        if (this.onTTSStart && retry === 0) this.onTTSStart();
-        this.setMicMuted(true);
 
         if (!window._globalTtsPlayer) {
             window._globalTtsPlayer = new Audio();
         }
         const ttsPlayer = window._globalTtsPlayer;
+        let settled = false;
+        const failPlayback = (error) => {
+            if (settled || playbackId !== this.ttsPlaybackId) {
+                return;
+            }
+            settled = true;
+            if (retry < 2) {
+                console.warn("⚠️ 音频拉取存在时差或404，500ms后自动重试...");
+                setTimeout(() => {
+                    if (playbackId === this.ttsPlaybackId) {
+                        this.playAliyunTTS(audioUrl, backupText, is_end, retry + 1);
+                    }
+                }, 500);
+                return;
+            }
+            console.error("❌ 阿里云音频加载彻底失败！已启动浏览器机器音兜底！", error);
+            this.speak(backupText, is_end, playbackId);
+        };
 
-        ttsPlayer.src = audioUrl + "?t=" + new Date().getTime();
+        this.pauseAliyunTTSPlayer();
+        ttsPlayer.src = this.resolveAppUrl(audioUrl) + "?t=" + new Date().getTime();
         ttsPlayer.load();
 
         ttsPlayer.onended = () => {
-            console.log("✅ 阿里云 TTS 真实人声播放完毕");
-            if (is_end) {
-                if (this.onInterviewEnd) this.onInterviewEnd();
-            } else {
-                this.setMicMuted(false);
-                this.sendAnswerStartedSignal();
-                if (this.onTTSEnd) this.onTTSEnd();
+            if (settled || playbackId !== this.ttsPlaybackId) {
+                return;
             }
+            settled = true;
+            console.log("✅ 阿里云 TTS 真实人声播放完毕");
+            this.finishTTSPlayback(playbackId, is_end);
         };
 
-        ttsPlayer.onerror = (e) => {
-            if (retry < 2) {
-                console.warn("⚠️ 音频拉取存在时差或404，500ms后自动重试...");
-                setTimeout(() => this.playAliyunTTS(audioUrl, backupText, is_end, retry + 1), 500);
-            } else {
-                console.error("❌ 阿里云音频加载彻底失败！已启动浏览器机器音兜底！", e);
-                this.speak(backupText, is_end);
-            }
-        };
+        ttsPlayer.onerror = failPlayback;
 
         const playPromise = ttsPlayer.play();
         if (playPromise !== undefined) {
-            playPromise.catch((error) => {
-                console.error("⚠️ 播放发生拦截:", error);
-                this.speak(backupText, is_end);
-            });
+            playPromise.catch(failPlayback);
         }
     }
 }

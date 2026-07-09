@@ -239,14 +239,3 @@ curl -X POST "{BASE_URL}/api/external/interviewResult/getApplicationInfoBatch" \
 | interviewResult.media | object | 面试音视频归档路径 |
 | interviewResult.timestamps | object | 面试提交、完成、处理时间 |
 
-## 4. 服务端配置
-
-AI 面试系统服务器需要配置：
-
-```env
-EXTERNAL_RESULT_APP_KEY=your-app-key
-EXTERNAL_RESULT_APP_SECRET=your-app-secret
-EXTERNAL_RESULT_TOKEN_EXPIRE_SECONDS=86400
-```
-
-`EXTERNAL_RESULT_TOKEN_EXPIRE_SECONDS` 默认 86400 秒，也就是 24 小时。
