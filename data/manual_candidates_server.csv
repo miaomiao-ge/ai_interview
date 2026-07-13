@@ -1,0 +1,3 @@
+﻿name,passport_no,email,photo,application_id,application_no,application_status,recommend_flag,source,password,family_name,given_name,gender,nationality,passport_expiry,birthday,status,remark
+myh,12345678,2901549346@qq.com,/opt/ai_interview/data/my_face.jpg,685792081172934652,20260700015,审核通过,true,local_manual_test,,,,,,,,active,
+myh2,12345679,2901549346+2@qq.com,/opt/ai_interview/data/my_face_2.jpg,,20260700016,审核通过,true,local_manual_test,,,,,,,,active,
