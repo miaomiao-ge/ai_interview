@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>模拟面试 · Interview Practice</title>
+  <link rel="stylesheet" href="./assets/style.css">
+</head>
+<body>
+  <header><a href="/interview/" class="brand">AI Interview<span data-t="badge">模拟面试</span></a><a href="/interview/" data-t="back">返回正式面试</a></header>
+  <main>
+    <section class="intro"><p class="eyebrow">PRACTICE BEFORE YOU BEGIN</p><h1 data-t="title">先练习，再从容开始。</h1><p data-t="intro">用一次完整问答，熟悉听题、作答和提交的节奏。</p></section>
+    <aside class="notice" data-t="notice">仅供体验 · 不计成绩 · 不保存面试记录</aside>
+    <div id="login" class="card" hidden><h2 data-t="loginTitle">请先登录学生账号</h2><p data-t="loginCopy">登录后即可体验，无需绑定人脸照片。</p><a class="button primary" href="/interview/" data-t="login">前往登录</a></div>
+    <div id="setup" class="card">
+      <h2 data-t="prep">开始前，检查一下设备</h2>
+      <label for="language" data-t="language">面试语言</label><select id="language"><option value="zh">中文</option><option value="en">English</option></select>
+      <p data-t="prepCopy">共 6 道练习题。摄像头仅在本机预览；麦克风声音会发送给语音服务进行实时转写。无需人脸核验，不录制或上传完整录像。</p>
+      <label class="consent"><input type="checkbox" id="consent"><span data-t="consent">我同意本次使用摄像头预览和麦克风实时语音识别。</span></label>
+      <div class="actions"><button id="check" data-t="check">检测摄像头与麦克风</button><button id="start" class="primary" disabled data-t="start">开始模拟面试</button></div>
+    </div>
+    <div id="experience" class="room" hidden>
+      <section class="card question-card"><div class="row"><span class="eyebrow" data-t="interviewer">模拟面试官</span><span id="progress"></span></div><h2 id="question"></h2><button id="replay" data-t="replay">重听问题</button><div class="answer"><span class="eyebrow" data-t="yourAnswer">本轮回答</span><p id="transcript" aria-live="polite"></p></div><div class="actions"><button id="record" class="primary" data-t="record">开始作答</button><button id="finish" disabled data-t="finish">回答完毕</button><button id="next" hidden data-t="next">下一题</button></div><button id="exit" class="quiet" data-t="exit">退出本次体验</button></section>
+      <section class="card preview-card"><video id="video" autoplay muted playsinline></video><p data-t="preview">摄像头本机预览 · 不保存</p><label for="level" data-t="level">麦克风音量</label><meter id="level" min="0" max="1" value="0"></meter></section>
+    </div>
+    <section id="complete" class="card complete" hidden><div class="checkmark">✓</div><h2 data-t="done">体验完成</h2><p data-t="doneCopy">你已熟悉面试流程。本次体验没有生成成绩，也没有保存面试记录。</p><div class="actions"><button id="again" class="primary" data-t="again">再练一次</button><a class="button" href="/interview/" data-t="back">返回正式面试</a></div></section>
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+  <footer data-t="footer">练习题用于熟悉操作，不代表正式面试题目。离开页面后，本次进度不会保留。</footer>
+  <script type="module" src="./assets/app.js"></script>
+</body>
+</html>

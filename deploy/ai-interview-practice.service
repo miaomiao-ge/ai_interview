@@ -1,0 +1,28 @@
+[Unit]
+Description=AI Interview practice (volatile sessions, no persistence)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/ai_interview
+EnvironmentFile=/opt/ai_interview/.env
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/ai_interview/.venv/bin/python -m uvicorn practice.app:app --host 127.0.0.1 --port 9010 --workers 1 --no-access-log --ws-max-size 65536
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+UMask=0077
+MemoryMax=384M
+CPUQuota=100%
+LimitCORE=0
+
+[Install]
+WantedBy=multi-user.target
