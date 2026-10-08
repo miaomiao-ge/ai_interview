@@ -100,6 +100,19 @@ def capacity_error_response(kind: str, active_count: int, limit: int) -> dict:
     }
 
 
+def asr_empty_response(language: str = "zh") -> dict:
+    is_english = (language or "").strip().lower().startswith("en")
+    return {
+        "status": "error",
+        "code": "asr_empty",
+        "message": (
+            "No speech was recognized. Please speak clearly and answer again."
+            if is_english
+            else "未识别到有效语音，请靠近麦克风并重新回答。"
+        ),
+    }
+
+
 def get_client_ip(request: Optional[Request]) -> str:
     client = getattr(request, "client", None)
     return getattr(client, "host", "") or "unknown"
@@ -811,7 +824,7 @@ async def submit_answer_media(
         print(f"[ASR][{session_id[:8]}][chosen] source={asr_source} text={answer_text or '<empty>'}", flush=True)
 
     if not answer_text:
-        answer_text = "【候选人未作答 / No Answer】"
+        return asr_empty_response(language)
 
     reply = await submit_answer(SubmitAnswerRequest(session_id=session_id, text=answer_text))
     if isinstance(reply, dict):
@@ -891,7 +904,12 @@ async def realtime_asr_ws(websocket: WebSocket, session_id: str, language: str =
                 break
 
         final_answer = await asyncio.to_thread(asr_session.finish_text)
-        final_answer = final_answer or fallback_text or "【候选人未作答 / No Answer】"
+        final_answer = final_answer or fallback_text
+        if not final_answer:
+            await websocket.send_json({"type": "error", **asr_empty_response(language)})
+            await websocket.close()
+            return
+
         if ASR_DEBUG_LOG:
             source = "realtime_ws_asr" if asr_session.text() else "fallback_text"
             print(f"[ASR][{session_id[:8]}][answer] source={source} text={final_answer}", flush=True)

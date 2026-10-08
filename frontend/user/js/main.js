@@ -1,6 +1,6 @@
 import { loginAPI, registerAPI, sendEmailCodeAPI, resetPasswordAPI, startInterviewAPI, cancelInterviewAPI, endInterviewAPI, getInterviewStatusAPI, faceStatusAPI, facePrecheckAPI, faceProctoringAPI } from './api.js?v=face001';
 import { UI } from './ui.js?v=20260531connectionBtnA';
-import { InterviewMediaManager } from './interview_media.js?v=20260709ttsGuardA';
+import { InterviewMediaManager } from './interview_media.js?v=20260811asrFixA';
 import { getAuthModeConfig, getEmailCodePurpose } from './auth_state.js?v=20260528authcompact';
 import { initAuthMotion } from './auth_motion.js?v=20260531memoryA';
 import { initDeepSeaVoiceprint } from './auth_deepsea_voiceprint.js?v=20260530auroraCurtainA';

@@ -499,7 +499,8 @@ export class InterviewMediaManager {
             language: this.language || 'zh',
             audio_device: this.selectedAudioDeviceLabel || ''
         });
-        return `${protocol}//${window.location.host}${this.getAppBasePath()}/api/user/ws/asr?${params.toString()}`;
+        const asrPath = this.resolveAppUrl('/api/user/ws/asr');
+        return `${protocol}//${window.location.host}${asrPath}?${params.toString()}`;
     }
 
     downsampleTo16k(buffer, inputSampleRate) {
@@ -586,7 +587,9 @@ export class InterviewMediaManager {
                 }
 
                 if (data.type === 'error') {
-                    reject(new Error(data.message || '实时语音识别失败'));
+                    const asrError = new Error(data.message || '实时语音识别失败');
+                    asrError.code = data.code || '';
+                    reject(asrError);
                 }
             };
             ws.onerror = () => reject(new Error('实时语音识别连接异常'));
@@ -889,7 +892,9 @@ export class InterviewMediaManager {
                 ? await submitAnswerMediaAPI(this.sessionId, answerBlob, this.language, this.currentTranscript || '', 'webm')
                 : await submitAnswerAPI(this.sessionId, answerText);
             if (data.status !== "success") {
-                throw new Error(data.message || "提交回答失败");
+                const submitError = new Error(data.message || "提交回答失败");
+                submitError.code = data.code || '';
+                throw submitError;
             }
             if (data.recognized_text) {
                 this.currentTranscript = data.recognized_text;
@@ -897,7 +902,12 @@ export class InterviewMediaManager {
             this.handleReply(data);
         } catch (error) {
             console.error("❌ 提交回答失败:", error);
-            this.speak(this.language === 'en' ? "Sorry, network error. Please try again." : "网络异常，请稍后重试。", false);
+            const retryText = error.code === 'asr_empty'
+                ? (this.language === 'en'
+                    ? "I couldn't recognize your answer. Please speak clearly and answer again."
+                    : "没有识别到你的回答，请靠近麦克风并重新回答。")
+                : (this.language === 'en' ? "Sorry, network error. Please try again." : "网络异常，请稍后重试。");
+            this.speak(retryText, false);
         } finally {
             this.isSubmittingAnswer = false;
             this.stopAnswerCapture({ discard: true });
