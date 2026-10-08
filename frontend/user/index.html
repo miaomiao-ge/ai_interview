@@ -11,6 +11,38 @@
         /* 外面的登录页和准备页将完美保留双语对照！ */
         body[data-lang="zh"] #interviewSection .lang-en { display: none !important; }
         body[data-lang="en"] #interviewSection .lang-zh { display: none !important; }
+        #startSection .prep-entry-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+            width: min(100%, 1006px);
+        }
+        #startSection .prep-entry-actions .prep-primary {
+            width: 100% !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            box-sizing: border-box;
+        }
+        .practice-entry-copy { line-height: 1.15; }
+        body[data-lang="zh"] #practiceInterviewLink .practice-en,
+        body[data-lang="en"] #practiceInterviewLink .practice-zh { display: none; }
+        @media (max-width: 600px) {
+            #startSection .prep-entry-actions { gap: 10px; }
+            #startSection .prep-entry-actions .prep-primary {
+                font-size: 15px;
+                gap: 8px;
+                padding: 12px 8px;
+                min-height: 60px;
+            }
+            #startSection .prep-entry-actions .prep-primary img {
+                width: 22px;
+                height: 22px;
+                flex-shrink: 0;
+            }
+            #startSection .prep-entry-actions .prep-primary-copy { white-space: normal; }
+        }
     </style>
 </head>
 <body data-lang="zh">
@@ -248,11 +280,16 @@
                 </div>
 
                 <div class="prep-action-area">
+                    <div class="prep-entry-actions">
                     <button id="initInterviewBtn" class="btn btn-primary btn-large prep-primary" disabled>
                         <img src="/static/user/assets/prep-icon-enter-arrow.png" alt="" aria-hidden="true">
                         <span class="prep-primary-copy">进入面试室 / Enter Interview Room</span>
                     </button>
-                    <a id="practiceInterviewLink" href="/interview/practice/" style="display:block;margin-top:16px;text-align:center;color:#2563eb;font-weight:600;">模拟面试 / Practice Interview（不计成绩 · No grades）</a>
+                    <a id="practiceInterviewLink" class="btn btn-primary btn-large prep-primary" href="/interview/practice/" title="模拟面试不计成绩 / Practice does not count toward your score">
+                        <img src="/static/user/assets/prep-icon-enter-arrow.png" alt="" aria-hidden="true">
+                        <span class="practice-entry-copy"><span class="practice-zh">模拟面试</span><span class="practice-en">Practice Interview</span></span>
+                    </a>
+                    </div>
                     <div class="prep-footer-meta">
                         <span><i></i><span class="prep-meta-copy">请先完成设备检测和录制授权确认<span class="i18n-en">Please complete device checks and recording authorization first.</span></span></span>
                         <span class="prep-meta-divider"></span>
