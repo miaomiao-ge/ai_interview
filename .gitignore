@@ -85,6 +85,7 @@ yarn-error.log*
 
 # Runtime data
 .runtime/
+output/playwright/
 pids/
 tmp/
 tmp/candidate_faces/

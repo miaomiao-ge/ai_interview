@@ -6,7 +6,7 @@ def test_admin_html_contains_readable_user_management_labels():
     admin_html = Path("frontend/admin/admin.html").read_text(encoding="utf-8")
 
     expected_labels = [
-        "西电 AI 面试系统 - 管理控制台",
+        "多模态AI招生面试智能评估系统 - 管理控制台",
         "管理端登录",
         "用户管理",
         "用户名",

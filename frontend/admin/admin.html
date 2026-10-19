@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI面试系统 - 管理控制台</title>
+    <title>多模态AI招生面试智能评估系统 - 管理控制台</title>
     <link rel="stylesheet" href="/static/admin/css/admin_style.css?v=20260702scoresort">
 </head>
 <body>
@@ -13,8 +13,8 @@
         <header class="admin-auth-top">
             <img src="/static/user/assets/auth-icon-shield-check.png" alt="" aria-hidden="true">
             <div>
-                <h1>AI面试系统</h1>
-                <p>AI面试系统</p>
+                <h1>多模态AI招生面试智能评估系统</h1>
+                <p>招生面试管理控制台</p>
             </div>
         </header>
 
@@ -30,9 +30,9 @@
                         <img src="/static/user/assets/auth-icon-shield-lock.png" alt="" aria-hidden="true">
                     </div>
                     <h2>Admin Console</h2>
-                    <h3>面试管理后台</h3>
+                    <h3>招生面试管理后台</h3>
                     <div class="admin-brand-rule" aria-hidden="true"></div>
-                    <p>智能化面试管理与数据复核平台<br>保障公正 · 提升效率 · 驱动决策</p>
+                    <p>学校招生面试管理与智能评估平台<br>规范流程 · 辅助复核 · 提升效率</p>
                 </div>
 
                 <div class="admin-feature-cards" aria-hidden="true">
@@ -100,8 +100,8 @@
 <div class="container" id="mainDashboard" style="display: none;">
     <div class="admin-nav">
         <div class="admin-route-brand">
-            <b>管理控制台</b>
-            <small>Admin Console</small>
+            <b>多模态AI招生面试智能评估系统</b>
+            <small>招生面试管理控制台</small>
         </div>
         <div class="nav-tabs" id="navMenu">
             <button class="nav-tab active" data-target="view-records"><span>📊</span><b>面试记录</b></button>
@@ -118,7 +118,7 @@
         <div class="admin-page-heading">
             <div>
                 <h2>最新面试动态</h2>
-                <p>查看候选人面试记录、复核结果与归档状态</p>
+                <p>查看考生招生面试记录、智能评估结果与归档状态</p>
             </div>
             <div class="record-toolbar">
                 <input id="recordSearchInput" class="custom-input record-search-input" placeholder="支持邮箱/会话ID/状态/备注/时间模糊查询">
@@ -143,7 +143,7 @@
                     <tr>
                         <th class="record-select-col admin-super-only" style="display: none;"><input type="checkbox" id="selectAllRecords" aria-label="选择当前筛选结果中的全部面试记录"></th>
                         <th>面试时间</th>
-                        <th>护照号</th>
+                        <th>考生邮箱</th>
                         <th>会话 ID</th>
                         <th>AI 综合得分</th>
                         <th>人脸核验</th>
@@ -169,7 +169,7 @@
                 </div>
                 <div class="header-card report-summary-card">
                     <div class="header-info">
-                        <div><span>候选人</span><strong id="ui-email">-</strong></div>
+                        <div><span>考生</span><strong id="ui-email">-</strong></div>
                         <div><span>面试时间</span><strong id="ui-time">-</strong></div>
                         <div><span>会话 ID</span><strong id="ui-session-id">-</strong></div>
                         <div><span>处理状态</span><strong id="ui-processing-status">-</strong></div>
@@ -223,7 +223,7 @@
                     <div class="card transcript-card">
                         <div class="report-section-head">
                             <h3>完整对话逐字稿</h3>
-                            <span>候选人与 AI 面试官对话</span>
+                            <span>考生与 AI 面试官对话</span>
                         </div>
                         <div id="ui-chat-history" class="chat-history-box"></div>
                     </div>

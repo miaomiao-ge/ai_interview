@@ -2,14 +2,14 @@ import { createLanguageSwitcher, getLanguage } from './i18n.js?v=20260609i18nF';
 
 const HELP_MESSAGES = {
     zh: {
-        pageTitle: '帮助中心 - AI面试系统',
+        pageTitle: '帮助中心 - 多模态AI招生面试智能评估系统',
         navLabel: '帮助中心导航',
         navFlow: '流程说明',
         navGuide: '使用说明',
         navFaq: '常见问题',
         navBack: '返回',
         heroTitle: '帮助中心',
-        heroSubtitle: 'AI面试系统使用说明与操作指南',
+        heroSubtitle: '多模态AI招生面试智能评估系统使用说明与操作指南',
         prepSummaryLabel: '面试前准备摘要',
         prepLabel: '面试前建议',
         prepTime: '10 分钟',
@@ -47,14 +47,14 @@ const HELP_MESSAGES = {
         noticePage: '面试过程中请勿切换页面、刷新页面或关闭浏览器。'
     },
     en: {
-        pageTitle: 'Help Center - AI面试系统',
+        pageTitle: 'Help Center - Multimodal AI Admissions Interview',
         navLabel: 'Help center navigation',
         navFlow: 'Flow',
         navGuide: 'Guide',
         navFaq: 'FAQ',
         navBack: 'Back',
         heroTitle: 'Help Center',
-        heroSubtitle: 'Instructions and operating guide for AI面试系统',
+        heroSubtitle: 'Instructions for the multimodal AI admissions interview system',
         prepSummaryLabel: 'Pre-interview preparation summary',
         prepLabel: 'Before the interview',
         prepTime: '10 minutes',

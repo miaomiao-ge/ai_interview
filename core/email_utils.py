@@ -9,8 +9,8 @@ from core.config import SMTP_FROM, SMTP_PASSWORD, SMTP_PORT, SMTP_SECURITY, SMTP
 def _build_sender() -> tuple[str, str]:
     from_name, from_addr = parseaddr(SMTP_FROM or "")
     if not from_addr:
-        from_name, from_addr = "AI面试系统", SMTP_USER
-    return from_name or "AI面试系统", from_addr
+        from_name, from_addr = "多模态AI招生面试智能评估系统", SMTP_USER
+    return from_name or "多模态AI招生面试智能评估系统", from_addr
 
 
 def send_verification_email(to_email: str, code: str, purpose: str = "register") -> bool:
@@ -25,7 +25,7 @@ def send_verification_email(to_email: str, code: str, purpose: str = "register")
     from_name, from_addr = _build_sender()
 
     mail_msg = f"""
-    <h2>AI 面试系统</h2>
+    <h2>多模态AI招生面试智能评估系统</h2>
     <p>您正在尝试 <b>{action_text}</b>。</p>
     <p>您的验证码是：<strong style="color: #4CAF50; font-size: 24px;">{code}</strong></p>
     <p>该验证码 5 分钟内有效，请勿泄露给他人。</p>
@@ -34,7 +34,7 @@ def send_verification_email(to_email: str, code: str, purpose: str = "register")
     message = MIMEText(mail_msg, "html", "utf-8")
     message["From"] = formataddr((str(Header(from_name, "utf-8")), from_addr))
     message["To"] = to_email
-    message["Subject"] = Header(f"【AI面试系统】您的{action_text}验证码", "utf-8")
+    message["Subject"] = Header(f"【多模态AI招生面试智能评估系统】您的{action_text}验证码", "utf-8")
 
     try:
         port = int(SMTP_PORT or (465 if SMTP_SECURITY == "ssl" else 587))

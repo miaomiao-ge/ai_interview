@@ -19,11 +19,11 @@ from core.redis_utils import delete_key, json_get, json_set, redis_key
 
 custom_http_client = httpx.Client(trust_env=False)
 
-# 将 custom_http_client 传给 ChatOpenAI，并确保模型名字是 qwen-max
+# 将 custom_http_client 传给 ChatOpenAI。模型名可通过环境变量切换，避免供应商下线模型后整场面试进入兜底回复。
 llm = ChatOpenAI(
     api_key=DASHSCOPE_API_KEY,
     base_url=LLM_BASE_URL,
-    model="qwen3-max",
+    model=os.getenv("LLM_MODEL", "qwen3.8-max"),
     temperature=0.7,
     http_client=custom_http_client  #让大模型请求绕过代理！
 )

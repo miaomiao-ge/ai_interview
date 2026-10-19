@@ -5,7 +5,7 @@ const AUTH_MODE_CONFIG = {
         showForgotLink: true,
         sendCodePurpose: 'forgot',
         titleHtml: '欢迎登录 / Welcome Back',
-        subtitleHtml: '请使用您的账号登录AI面试系统 / Sign in to AI面试系统',
+        subtitleHtml: '请使用您的账号登录多模态AI招生面试智能评估系统 / Sign in to the admissions interview system',
         passwordPlaceholder: '请输入密码 / Enter your password',
         passwordAutocomplete: 'current-password',
         primaryButtonHtml: '登录 / Login',
