@@ -1,4 +1,4 @@
-import { loginAPI, registerAPI, sendEmailCodeAPI, resetPasswordAPI, startInterviewAPI, cancelInterviewAPI, endInterviewAPI, getInterviewStatusAPI, faceStatusAPI, facePrecheckAPI, faceProctoringAPI } from './api.js?v=20261103account3';
+import { loginAPI, registerAPI, sendEmailCodeAPI, resetPasswordAPI, startInterviewAPI, cancelInterviewAPI, endInterviewAPI, getInterviewStatusAPI, faceStatusAPI, facePrecheckAPI, faceProctoringAPI } from './api.js?v=20261103tabstay';
 import { UI } from './ui.js?v=20260531connectionBtnA';
 import { InterviewMediaManager } from './interview_media.js?v=20260811asrFixA';
 import { getAuthModeConfig, getEmailCodePurpose } from './auth_state.js?v=20260528authcompact';
@@ -1636,11 +1636,6 @@ async function handleAuthSubmit(event) {
                     updatePrepReadiness();
                 }, 500);
             } else {
-                if (res.code === 'use_platform_login') {
-                    setLoginSource('platform');
-                } else if (res.code === 'not_registered_on_platform' || res.code === 'platform_account_not_configured') {
-                    setLoginSource('xidian');
-                }
                 throw new Error(res.message);
             }
         } else if (currentMode === 'register') {
