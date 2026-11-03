@@ -18,6 +18,7 @@ class SyncStats:
     created: int = 0
     updated: int = 0
     linked: int = 0
+    restored: int = 0
     skipped: int = 0
     conflicts: int = 0
     failed: int = 0
@@ -71,6 +72,13 @@ def upsert_platform_student(db, record: dict, dry_run: bool = False) -> str:
     status_value = str(record.get("status") or "active").strip() or "active"
     real_name = _text(record, "real_name", 100)
     platform_id = _platform_id(record)
+    platform_source = str(record.get("source") or "").strip()
+    if platform_source in {"qa", "manual_test", "local_manual_test"}:
+        return "skipped"
+    # Roster snapshots belong to the original Xidian interview entry. Only a
+    # genuine platform registration (self_register / platform_local) owns the
+    # platform login.
+    is_roster = platform_source == "xidian_api"
 
     user = db.query(User).filter(User.passport_no == passport_no).first()
     now = datetime.now()
@@ -84,8 +92,8 @@ def upsert_platform_student(db, record: dict, dry_run: bool = False) -> str:
                 passport_no=passport_no,
                 password_hash=password_hash,
                 status=status_value,
-                source="platform",
-                auth_source="platform",
+                source="xidian_api" if is_roster else "platform",
+                auth_source="xidian" if is_roster else "platform",
                 platform_user_id=platform_id,
                 platform_synced_at=now,
             )
@@ -94,21 +102,51 @@ def upsert_platform_student(db, record: dict, dry_run: bool = False) -> str:
         return action
 
     auth_source = getattr(user, "auth_source", None) or "xidian"
-    platform_source = str(record.get("source") or "").strip()
+
+    if is_roster:
+        if auth_source == "platform":
+            # Undo the earlier over-eager link: this passport belongs to the
+            # Xidian roster, so restore the Xidian entry. Keep the existing
+            # password so a password changed in AI is not reverted.
+            action = "restored"
+            if dry_run:
+                return action
+            user.auth_source = "xidian"
+            user.source = "xidian_api"
+            user.real_name = real_name or user.real_name
+            user.status = status_value
+            user.platform_user_id = platform_id
+            user.platform_synced_at = now
+            db.flush()
+            return action
+
+        if (user.password_hash or "") != password_hash:
+            return "conflict"
+        changed = (
+            (user.status or "active") != status_value
+            or (user.real_name or "") != real_name
+            or (user.source or "") != "xidian_api"
+            or getattr(user, "platform_user_id", None) != platform_id
+        )
+        action = "updated" if changed else "skipped"
+        if action == "skipped" or dry_run:
+            return action
+        user.real_name = real_name or user.real_name
+        user.status = status_value
+        user.source = "xidian_api"
+        user.platform_user_id = platform_id
+        user.platform_synced_at = now
+        db.flush()
+        return action
+
     if auth_source == "platform":
         action = "updated" if _differs(user, record) else "skipped"
         if action == "skipped" or dry_run:
             return action
         user.password_hash = password_hash
     else:
-        if platform_source in {"qa", "manual_test", "local_manual_test"}:
-            return "skipped"
-        if platform_source == "xidian_api" and (user.password_hash or "") != password_hash:
-            # The platform copy of a roster snapshot can be older than a password
-            # the student changed in AI; do not silently revert it.
-            return "conflict"
-        # A platform registration takes over an existing Xidian account. Keep the
-        # original email and all Xidian application fields.
+        # A genuine platform registration takes over an existing Xidian account.
+        # Keep the original email and all Xidian application fields.
         action = "linked"
         if dry_run:
             return action

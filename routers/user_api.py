@@ -691,6 +691,12 @@ async def login(req: LoginRequest, request: Request = None):
                     "code": "not_registered_on_platform",
                     "message": "该账号尚未在留学平台注册，请使用西电面试账号入口登录。",
                 }
+            if (getattr(user, "auth_source", "xidian") or "xidian") == "xidian":
+                return {
+                    "status": "error",
+                    "code": "use_xidian_login",
+                    "message": "该账号属于西电面试账号，请使用“西电面试账号”入口登录。",
+                }
             if not verify_password(req.password, user.password_hash):
                 record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
                 record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)

@@ -161,7 +161,17 @@ def test_ensure_reports_unavailable_platform(monkeypatch):
     assert sync.ensure_local_account_from_platform(db, "P1") == (None, "unavailable")
 
 
-def test_xidian_snapshot_with_same_password_is_linked():
+def test_creates_xidian_roster_account_for_xidian_entry():
+    db = FakeDb()
+    action = sync.upsert_platform_student(db, record(source="xidian_api"))
+    assert action == "created"
+    user = db.added
+    assert user.auth_source == "xidian"
+    assert user.source == "xidian_api"
+    assert user.password_hash == "$2b$12$platform-hash"
+
+
+def test_xidian_snapshot_with_same_password_stays_on_xidian_entry():
     user = User(
         email="legacy@example.com",
         passport_no="P1234567",
@@ -171,8 +181,29 @@ def test_xidian_snapshot_with_same_password_is_linked():
     )
     db = FakeDb(user)
     action = sync.upsert_platform_student(db, record(source="xidian_api"))
-    assert action == "linked"
-    assert user.auth_source == "platform"
+    assert action == "updated"
+    assert user.auth_source == "xidian"
+    assert user.source == "xidian_api"
+    assert user.password_hash == "$2b$12$platform-hash"
+
+
+def test_previously_linked_roster_account_is_restored_to_xidian():
+    user = User(
+        email="legacy@example.com",
+        passport_no="P1234567",
+        password_hash="$2b$12$platform-hash",
+        auth_source="platform",
+        status="active",
+        source="platform",
+        platform_user_id=7,
+        real_name="Student Name",
+    )
+    db = FakeDb(user)
+    action = sync.upsert_platform_student(db, record(source="xidian_api"))
+    assert action == "restored"
+    assert user.auth_source == "xidian"
+    assert user.source == "xidian_api"
+    assert user.password_hash == "$2b$12$platform-hash"
 
 
 def test_xidian_snapshot_with_changed_password_is_a_conflict():
