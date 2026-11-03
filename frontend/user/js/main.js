@@ -1,4 +1,4 @@
-import { loginAPI, registerAPI, sendEmailCodeAPI, resetPasswordAPI, startInterviewAPI, cancelInterviewAPI, endInterviewAPI, getInterviewStatusAPI, faceStatusAPI, facePrecheckAPI, faceProctoringAPI } from './api.js?v=face001';
+import { loginAPI, registerAPI, sendEmailCodeAPI, resetPasswordAPI, startInterviewAPI, cancelInterviewAPI, endInterviewAPI, getInterviewStatusAPI, faceStatusAPI, facePrecheckAPI, faceProctoringAPI } from './api.js?v=20261103dualLogin';
 import { UI } from './ui.js?v=20260531connectionBtnA';
 import { InterviewMediaManager } from './interview_media.js?v=20260811asrFixA';
 import { getAuthModeConfig, getEmailCodePurpose } from './auth_state.js?v=20260528authcompact';
@@ -516,6 +516,32 @@ const authBtn = document.getElementById('authBtn');
 const authForm = document.getElementById('authForm');
 const toggleModeBtn = document.getElementById('toggleModeBtn');
 const forgotPwdBtn = document.getElementById('forgotPwdBtn');
+const authSourceSwitch = document.getElementById('authSourceSwitch');
+const loginSourceHint = document.getElementById('loginSourceHint');
+const loginSourceButtons = authSourceSwitch
+    ? Array.from(authSourceSwitch.querySelectorAll('[data-login-source]'))
+    : [];
+let loginSource = 'xidian';
+function setLoginSource(source) {
+    loginSource = source === 'platform' ? 'platform' : 'xidian';
+    loginSourceButtons.forEach((button) => {
+        const active = button.dataset.loginSource === loginSource;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    if (loginSourceHint) {
+        loginSourceHint.textContent = loginSource === 'platform'
+            ? '护照号 + 留学平台密码'
+            : '护照号 + 原面试密码';
+    }
+    if (passwordInput) passwordInput.value = '';
+}
+loginSourceButtons.forEach((button) => {
+    button.onclick = () => setLoginSource(button.dataset.loginSource);
+});
+// Accounts are provisioned by the Xidian roster sync or the foreign affairs
+// platform; self-registration here cannot produce a usable passport login.
+const SELF_REGISTER_ENABLED = false;
 const passwordToggle = document.getElementById('passwordToggle');
 const codeHelp = document.getElementById('codeHelp');
 const codeHelpEmail = document.getElementById('codeHelpEmail');
@@ -1466,6 +1492,7 @@ if (reselectLangBtn) {
 }
 
 function updateUIState() {
+    if (!SELF_REGISTER_ENABLED && currentMode === 'register') currentMode = 'login';
     authStatus.innerText = "";
     const preservedEmail = emailInput.value;
     emailInput.value = preservedEmail;
@@ -1473,6 +1500,8 @@ function updateUIState() {
     passwordInput.value = "";
     usernameInput.value = "";
 
+    if (authSourceSwitch) authSourceSwitch.style.display = currentMode === 'login' ? 'flex' : 'none';
+    if (loginSourceHint) loginSourceHint.style.display = currentMode === 'login' ? 'block' : 'none';
     const config = getAuthModeConfig(currentMode);
     if (loginOverlay) loginOverlay.dataset.mode = currentMode;
     brandModes.forEach((brandMode) => {
@@ -1492,8 +1521,10 @@ function updateUIState() {
     passwordInput.type = 'password';
     if (passwordToggle) passwordToggle.setAttribute('aria-label', '显示密码');
     document.querySelector('#authBtn').textContent = currentMode === 'forgot' ? t('authResetButton') : (currentMode === 'register' ? t('authRegisterButton') : t('authLoginButton'));
-    document.querySelector('#toggleText').textContent = currentMode === 'register' ? t('authAlreadyHaveAccount') : '';
-    document.querySelector('#toggleModeBtn').textContent = currentMode === 'forgot' ? t('authBackToLogin') : (currentMode === 'login' ? t('authRegisterLink') : t('authLoginButton'));
+    document.querySelector('#toggleText').textContent = SELF_REGISTER_ENABLED && currentMode === 'register' ? t('authAlreadyHaveAccount') : '';
+    const toggleBtn = document.querySelector('#toggleModeBtn');
+    toggleBtn.textContent = currentMode === 'forgot' ? t('authBackToLogin') : (SELF_REGISTER_ENABLED ? (currentMode === 'login' ? t('authRegisterLink') : t('authLoginButton')) : '');
+    toggleBtn.style.display = (SELF_REGISTER_ENABLED || currentMode === 'forgot') ? '' : 'none';
     applyStaticI18n();
     window.requestAnimationFrame(() => emailInput?.focus());
 }
@@ -1513,6 +1544,10 @@ if (passwordToggle) {
 
 toggleModeBtn.onclick = (e) => {
     e.preventDefault();
+    if (!SELF_REGISTER_ENABLED && currentMode === 'login') {
+        authStatus.innerText = '请先在外事留学平台完成注册 / Please register on the Foreign Affairs platform first.';
+        return;
+    }
     currentMode = (currentMode === 'login') ? 'register' : 'login';
     updateUIState();
 };
@@ -1571,7 +1606,7 @@ async function handleAuthSubmit(event) {
     try {
         if (currentMode === 'login') {
             if (!account) throw new Error(t('invalidPassport'));
-            const res = await loginAPI(account, pass);
+            const res = await loginAPI(account, pass, loginSource);
             if (res.status === "success") {
                 localStorage.setItem('ai_interviewer_token', res.token);
                 authStatus.innerText = `✓ ${t('loginSuccess')}`;
@@ -1581,7 +1616,14 @@ async function handleAuthSubmit(event) {
                     if(logoutBtn) logoutBtn.style.display = 'block';
                     updatePrepReadiness();
                 }, 500);
-            } else throw new Error(res.message);
+            } else {
+                if (res.code === 'use_platform_login') {
+                    setLoginSource('platform');
+                } else if (res.code === 'not_registered_on_platform' || res.code === 'platform_account_not_configured') {
+                    setLoginSource('xidian');
+                }
+                throw new Error(res.message);
+            }
         } else if (currentMode === 'register') {
             const res = await registerAPI(email, user, pass, code);
             if (res.status === "success") {

@@ -1,4 +1,3 @@
-import hashlib
 import time
 import random
 import json
@@ -15,6 +14,7 @@ from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 from core.database import SessionLocal, User
+from core.passwords import hash_password as hash_password_bcrypt, verify_password
 from core.email_utils import send_verification_email
 from core.llm_agent import (
     clear_interview_session,
@@ -24,6 +24,7 @@ from core.llm_agent import (
     update_session_runtime,
 )
 from core.interview_job_service import enqueue_interview_processing, get_interview_status
+from core.platform_account_sync import ensure_local_account_from_platform
 from core.tts_utils import generate_tts_audio
 from core.config import (
     SECRET_KEY,
@@ -47,6 +48,8 @@ from core.config import (
 )
 from core.config import ANSWER_AUDIO_UPLOAD_MAX_BYTES, MEDIA_UPLOAD_MAX_BYTES, OSS_PATH_PREFIX
 from core.config import FACE_VERIFY_ENABLED
+from core.config import PLATFORM_ACCOUNT_LOGIN_URL, SELF_REGISTER_ENABLED
+from core.config import PLATFORM_ACCOUNT_API_BASE, PLATFORM_ACCOUNT_SYNC_TOKEN
 from core.concurrency_guard import (
     release_active_asr,
     release_active_session,
@@ -259,7 +262,18 @@ def clear_rate_limit(key: str) -> None:
     _local_rate_limits.pop(key, None)
 
 def hash_password(password: str) -> str:
-    return hashlib.sha256(password.encode('utf-8')).hexdigest()
+    return hash_password_bcrypt(password)
+
+
+def platform_managed_response() -> dict:
+    payload = {
+        "status": "error",
+        "code": "platform_managed",
+        "message": "账号由外事留学平台统一管理，请前往留学平台注册或找回密码。",
+    }
+    if PLATFORM_ACCOUNT_LOGIN_URL:
+        payload["login_url"] = PLATFORM_ACCOUNT_LOGIN_URL
+    return payload
 
 class SendEmailCodeRequest(BaseModel):
     email: str
@@ -275,6 +289,7 @@ class LoginRequest(BaseModel):
     email: str = ""
     passport_no: str = ""
     password: str
+    login_source: str = ""
 
 class ResetPasswordRequest(BaseModel):
     email: str
@@ -541,6 +556,8 @@ async def send_email_code(req: SendEmailCodeRequest, request: Request = None):
     req.email = normalize_email(req.email)
     if req.purpose not in {"register", "forgot"}:
         return {"status": "error", "message": "验证码用途不合法"}
+    if req.purpose == "register" and not SELF_REGISTER_ENABLED:
+        return platform_managed_response()
 
     client_ip = get_client_ip(request)
     email_limit_key = redis_key("rate_limit", "otp_email", req.purpose, req.email)
@@ -557,6 +574,8 @@ async def send_email_code(req: SendEmailCodeRequest, request: Request = None):
             return {"status": "error", "message": "该邮箱已被注册，请直接登录！"}
         if req.purpose == "forgot" and not user:
             return {"status": "error", "message": "该邮箱尚未注册！"}
+        if req.purpose == "forgot" and (getattr(user, "auth_source", "xidian") or "xidian") == "platform":
+            return platform_managed_response()
     finally:
         db.close()
 
@@ -570,6 +589,8 @@ async def send_email_code(req: SendEmailCodeRequest, request: Request = None):
 
 @router.post("/register")
 async def register(req: RegisterRequest):
+    if not SELF_REGISTER_ENABLED:
+        return platform_managed_response()
     req.email = normalize_email(req.email)
     otp = read_otp(req.email, "register")
     if not otp or time.time() > otp["expire_at"] or otp["code"] != req.code:
@@ -608,6 +629,8 @@ async def reset_password(req: ResetPasswordRequest):
         user = db.query(User).filter(User.email == req.email).first()
         if not user:
             return {"status": "error", "message": "该邮箱尚未注册！"}
+        if (getattr(user, "auth_source", "xidian") or "xidian") == "platform":
+            return platform_managed_response()
 
         user.password_hash = hash_password(req.new_password)
         db.commit()
@@ -632,11 +655,94 @@ async def login(req: LoginRequest, request: Request = None):
 
     db = SessionLocal()
     try:
+        login_source = (getattr(req, "login_source", "") or "").strip().lower()
+        if login_source not in {"", "xidian", "platform"}:
+            login_source = ""
+
         user = find_user_by_login_identifier(db, login_id)
-        if not user or user.password_hash != hash_password(req.password):
-            record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
-            record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
-            return {"status": "error", "message": "护照号或密码错误！"}
+
+        if login_source == "platform":
+            if not PLATFORM_ACCOUNT_API_BASE or not PLATFORM_ACCOUNT_SYNC_TOKEN:
+                return {
+                    "status": "error",
+                    "code": "platform_account_not_configured",
+                    "message": "留学平台账号入口尚未开通，请先使用西电面试账号入口。",
+                }
+            # Always resolve the account from the platform: this both provisions
+            # a fresh registration immediately and keeps the password current.
+            user, platform_error = ensure_local_account_from_platform(
+                db, normalize_passport_no(login_id)
+            )
+            if user is None:
+                if platform_error == "unavailable":
+                    return {
+                        "status": "error",
+                        "code": "platform_account_unavailable",
+                        "message": "留学平台账号服务暂时不可用，请稍后重试。",
+                    }
+                record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+                record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+                return {
+                    "status": "error",
+                    "code": "not_registered_on_platform",
+                    "message": "该护照号尚未在留学平台注册，请使用西电面试账号入口登录。",
+                }
+            if not verify_password(req.password, user.password_hash):
+                record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+                record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+                return {"status": "error", "message": "护照号或密码错误！"}
+
+        elif login_source == "xidian":
+            if user is None:
+                record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+                record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+                return {"status": "error", "message": "护照号或密码错误！"}
+            if (getattr(user, "auth_source", "xidian") or "xidian") == "platform":
+                return {
+                    "status": "error",
+                    "code": "use_platform_login",
+                    "message": "该账号已启用留学平台登录，请切换到“留学平台账号”入口。",
+                }
+            if not verify_password(req.password, user.password_hash):
+                record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+                record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+                return {"status": "error", "message": "护照号或密码错误！"}
+
+        else:
+            # Compatibility path for callers that do not send a login source.
+            platform_error = None
+            if user is None:
+                user, platform_error = ensure_local_account_from_platform(
+                    db, normalize_passport_no(login_id)
+                )
+                if user is None:
+                    if platform_error == "unavailable":
+                        return {
+                            "status": "error",
+                            "code": "platform_account_unavailable",
+                            "message": "账号同步服务暂时不可用，请稍后重试。",
+                        }
+                    record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+                    record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+                    return {"status": "error", "message": "护照号或密码错误！"}
+
+            if not verify_password(req.password, user.password_hash):
+                auth_source = getattr(user, "auth_source", "xidian") or "xidian"
+                refreshed, refresh_error = ensure_local_account_from_platform(
+                    db, user.passport_no or login_id
+                )
+                if refreshed is not None:
+                    user = refreshed
+                if not verify_password(req.password, user.password_hash):
+                    record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+                    record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
+                    if refresh_error == "unavailable" and auth_source == "platform":
+                        return {
+                            "status": "error",
+                            "code": "platform_account_unavailable",
+                            "message": "登录服务暂时不可用，请稍后重试。",
+                        }
+                    return {"status": "error", "message": "护照号或密码错误！"}
 
         if getattr(user, "status", "active") != "active":
             record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)

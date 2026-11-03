@@ -51,6 +51,9 @@ class User(Base):
     remark = Column(Text)
     source = Column(String(50), default="self_register")
     imported_at = Column(DateTime, nullable=True)
+    auth_source = Column(String(20), nullable=False, default="xidian", comment="登录密码来源：xidian / platform")
+    platform_user_id = Column(Integer, nullable=True, comment="外事留学平台 users.id")
+    platform_synced_at = Column(DateTime, nullable=True, comment="平台账号最近同步时间")
     created_at = Column(DateTime, default=datetime.now, comment="注册时间")
 
 
@@ -362,6 +365,28 @@ def ensure_user_face_schema(db):
     db.commit()
 
 
+def ensure_user_platform_schema(db):
+    columns = _get_column_names(db, "users")
+    schema_changes = [
+        ("auth_source", "ALTER TABLE users ADD COLUMN auth_source VARCHAR(20) NOT NULL DEFAULT 'xidian'"),
+        ("platform_user_id", "ALTER TABLE users ADD COLUMN platform_user_id INT NULL"),
+        ("platform_synced_at", "ALTER TABLE users ADD COLUMN platform_synced_at DATETIME NULL"),
+    ]
+    altered = False
+    for column_name, sql_statement in schema_changes:
+        if column_name not in columns:
+            db.execute(text(sql_statement))
+            altered = True
+    if altered:
+        db.commit()
+
+    db.execute(text("UPDATE users SET auth_source='xidian' WHERE auth_source IS NULL OR auth_source=''"))
+    db.commit()
+    if not _has_index(db, "users", "auth_source"):
+        db.execute(text("ALTER TABLE users ADD INDEX idx_users_auth_source (auth_source)"))
+        db.commit()
+
+
 def ensure_proctoring_event_schema(db):
     db.execute(
         text(
@@ -578,6 +603,7 @@ def _legacy_auto_migrate_init_db():
     try:
         ensure_interview_record_schema(db)
         ensure_user_face_schema(db)
+        ensure_user_platform_schema(db)
         ensure_proctoring_event_schema(db)
         ensure_question_bank_schema(db)
         ensure_admin_user_schema(db)
@@ -723,6 +749,7 @@ def migrate_db(seed_super_admin: bool = True) -> None:
     try:
         ensure_interview_record_schema(db)
         ensure_user_face_schema(db)
+        ensure_user_platform_schema(db)
         ensure_proctoring_event_schema(db)
         ensure_question_bank_schema(db)
         ensure_admin_user_schema(db)

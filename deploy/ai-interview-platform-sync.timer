@@ -1,0 +1,11 @@
+[Unit]
+Description=Run AI Interview platform account sync every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=ai-interview-platform-sync.service
+
+[Install]
+WantedBy=timers.target

@@ -1,5 +1,6 @@
 import base64
 import re
+import time
 from dataclasses import dataclass
 from typing import Any, Iterator
 
@@ -19,6 +20,18 @@ APPLICATION_NO_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,50}$")
 
 class XidianStudentApiError(RuntimeError):
     pass
+
+
+def _retry(call, attempts: int = 3):
+    last_error = None
+    for index in range(attempts):
+        try:
+            return call()
+        except (httpx.HTTPError, XidianStudentApiError) as exc:
+            last_error = exc
+            if index + 1 < attempts:
+                time.sleep(2 * (index + 1))
+    raise last_error
 
 
 @dataclass(frozen=True)
@@ -120,12 +133,12 @@ def iter_applications(
         raise ValueError("limit 必须大于 0")
     timeout = httpx.Timeout(XIDIAN_STUDENT_REQUEST_TIMEOUT_SECONDS)
     with httpx.Client(timeout=timeout, follow_redirects=False, trust_env=False) as client:
-        token = get_access_token(client)
+        token = _retry(lambda: get_access_token(client))
         page_num = 1
         yielded = 0
         page_size = min(100, limit) if limit is not None else 100
         while True:
-            page = get_application_page(client, token, year, page_num, page_size, application_nos)
+            page = _retry(lambda: get_application_page(client, token, year, page_num, page_size, application_nos))
             records = page["data"]
             for record in records:
                 if isinstance(record, dict):

@@ -1,0 +1,13 @@
+[Unit]
+Description=Synchronize platform student accounts into AI Interview
+Wants=network-online.target
+After=network-online.target mysql.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/ai_interview
+ExecStart=/opt/ai_interview/.venv/bin/python tools/sync_platform_students.py
+Environment=PYTHONUNBUFFERED=1
+TimeoutStartSec=10min
+StandardOutput=append:/var/log/ai_interview_platform_sync.log
+StandardError=append:/var/log/ai_interview_platform_sync.log

@@ -6,6 +6,7 @@ import pytest
 
 from core import xidian_student_service as service
 from core import xidian_student_sync as sync
+from core.database import User
 
 
 class FakeResponse:
@@ -137,3 +138,89 @@ def test_password_hash_from_passport_uses_uppercase_passport_plus_2026():
 def test_password_hash_from_passport_rejects_empty_passport_number():
     with pytest.raises(ValueError, match="为空"):
         sync._password_hash_from_passport(" ")
+
+
+class FakeUserQuery:
+    def __init__(self, db, order):
+        self.db = db
+        self.order = order
+
+    def filter(self, *args, **kwargs):
+        return self
+
+    def all(self):
+        return [self.db.user] if self.db.user is not None and self.order == 1 else []
+
+    def first(self):
+        return None
+
+
+class FakeUserDb:
+    def __init__(self, user):
+        self.user = user
+        self.order = 0
+        self.committed = False
+
+    def query(self, model):
+        self.order += 1
+        return FakeUserQuery(self, self.order)
+
+    def add(self, user):
+        self.user = user
+
+    def flush(self):
+        pass
+
+    def commit(self):
+        self.committed = True
+
+
+def _application_record():
+    return {
+        "applicationNo": "20260600003",
+        "id": "APP-UNIQUE-7",
+        "flag": "1",
+        "name": "DU TEST",
+        "familyName": "TEST",
+        "givenName": "DU",
+        "genderName": "女",
+        "nationalityChAbName": "奥兰群岛",
+        "passportNumber": "AQ1234567",
+        "expiryDate": "2026-07-03",
+        "birthday": "2026-06-02",
+        "email": "Student@example.com",
+        "status": "已录取",
+    }
+
+
+def test_platform_account_is_not_overwritten_by_roster_sync():
+    user = User(
+        email="student@example.com",
+        passport_no="AQ1234567",
+        password_hash="platform-hash",
+        auth_source="platform",
+        status="active",
+    )
+    db = FakeUserDb(user)
+
+    action = sync.upsert_application(db, _application_record(), upload_photo=False)
+
+    assert action == "skipped_platform"
+    assert user.password_hash == "platform-hash"
+    assert db.committed is False
+
+
+def test_existing_xidian_password_is_not_reset():
+    user = User(
+        email="old@example.com",
+        passport_no="AQ1234567",
+        password_hash="custom-hash",
+        auth_source="xidian",
+        status="active",
+    )
+    db = FakeUserDb(user)
+
+    action = sync.upsert_application(db, _application_record(), upload_photo=False)
+
+    assert action == "updated"
+    assert user.password_hash == "custom-hash"

@@ -16,6 +16,7 @@ class SyncStats:
     received: int = 0
     created: int = 0
     updated: int = 0
+    skipped: int = 0
     failed: int = 0
 
 
@@ -74,9 +75,13 @@ def upsert_application(db, record: dict, upload_photo: bool = True) -> str:
     password_hash = _password_hash_from_passport(passport_no)
 
     user = _find_user(db, passport_no, application_no, application_id)
+    if user is not None and (getattr(user, "auth_source", "xidian") or "xidian") == "platform":
+        # The platform account owns the password and status; the daily roster
+        # sync must not reset them back to the initial password.
+        return "skipped_platform"
     created = user is None
     if created:
-        user = User(email=email, password_hash=password_hash, status="active")
+        user = User(email=email, password_hash=password_hash, status="active", auth_source="xidian")
         db.add(user)
         db.flush()
 
@@ -92,7 +97,6 @@ def upsert_application(db, record: dict, upload_photo: bool = True) -> str:
     user.gender = _text(record, "genderName", 30)
     user.nationality = _text(record, "nationalityChAbName", 100)
     user.passport_no = passport_no
-    user.password_hash = password_hash
     user.passport_expiry = _date(record, "expiryDate")
     user.birthday = _date(record, "birthday")
     user.xidian_application_no = application_no
@@ -100,6 +104,7 @@ def upsert_application(db, record: dict, upload_photo: bool = True) -> str:
     user.xidian_recommend_flag = recommend_flag
     user.xidian_application_status = _text(record, "status", 50)
     user.source = "xidian_api"
+    user.auth_source = getattr(user, "auth_source", None) or "xidian"
     user.imported_at = now
 
     photo_value = str(record.get("photo") or "").strip()
@@ -138,7 +143,8 @@ def sync_students(
         db = SessionLocal()
         try:
             action = upsert_application(db, record, upload_photo=upload_photo)
-            setattr(stats, action, getattr(stats, action) + 1)
+            stat_name = "skipped" if action == "skipped_platform" else action
+            setattr(stats, stat_name, getattr(stats, stat_name) + 1)
         except Exception as exc:
             db.rollback()
             stats.failed += 1

@@ -13,6 +13,7 @@ openpyxl
 PyJWT
 python-dotenv
 redis
+bcrypt
 
 # Media and audio processing
 av

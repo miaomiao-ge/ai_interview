@@ -43,6 +43,34 @@
             }
             #startSection .prep-entry-actions .prep-primary-copy { white-space: normal; }
         }
+        .auth-source-switch {
+            display: flex;
+            gap: 8px;
+            margin: 2px 0 10px;
+        }
+        .auth-source-btn {
+            flex: 1;
+            padding: 9px 10px;
+            border: 1px solid rgba(120, 160, 220, 0.35);
+            border-radius: 10px;
+            background: transparent;
+            color: #cfe0ff;
+            font-size: 13px;
+            line-height: 1.3;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+        .auth-source-btn.active {
+            background: rgba(64, 140, 255, 0.18);
+            border-color: #5b9dff;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .auth-source-hint {
+            margin: -2px 0 12px;
+            font-size: 12px;
+            color: #9fb6d9;
+        }
     </style>
 </head>
 <body data-lang="zh">
@@ -136,6 +164,11 @@
             <form id="authForm" class="auth-form-panel" novalidate>
                 <h2 id="authTitle" class="login-title"></h2>
                 <p id="authSubtitle" class="login-subtitle"></p>
+                <div id="authSourceSwitch" class="auth-source-switch" role="tablist" aria-label="登录入口">
+                    <button type="button" class="auth-source-btn active" data-login-source="xidian" role="tab" aria-selected="true">西电面试账号 / Xidian</button>
+                    <button type="button" class="auth-source-btn" data-login-source="platform" role="tab" aria-selected="false">留学平台账号 / Platform</button>
+                </div>
+                <p id="loginSourceHint" class="auth-source-hint">护照号 + 原面试密码</p>
                 <div class="auth-mode-hint auth-mode-hint-forgot">
                     <img src="/static/user/assets/auth-icon-shield-check.png" alt="" aria-hidden="true">
                     <p>请输入您注册时使用的邮箱，我们将向您发送验证码，验证通过后即可设置新密码。<span class="i18n-en">Enter the email used during registration. We will send you a verification code, then you can set a new password.</span></p>
@@ -426,6 +459,6 @@
         </div>
     </div>
 
-    <script type="module" src="/static/user/js/main.js?v=20260811asrFixA"></script>
+    <script type="module" src="/static/user/js/main.js?v=20261103dualLogin"></script>
 </body>
 </html>
