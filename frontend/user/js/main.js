@@ -1,4 +1,4 @@
-import { loginAPI, registerAPI, sendEmailCodeAPI, resetPasswordAPI, startInterviewAPI, cancelInterviewAPI, endInterviewAPI, getInterviewStatusAPI, faceStatusAPI, facePrecheckAPI, faceProctoringAPI } from './api.js?v=20261103accountLabel';
+import { loginAPI, registerAPI, sendEmailCodeAPI, resetPasswordAPI, startInterviewAPI, cancelInterviewAPI, endInterviewAPI, getInterviewStatusAPI, faceStatusAPI, facePrecheckAPI, faceProctoringAPI } from './api.js?v=20261103account3';
 import { UI } from './ui.js?v=20260531connectionBtnA';
 import { InterviewMediaManager } from './interview_media.js?v=20260811asrFixA';
 import { getAuthModeConfig, getEmailCodePurpose } from './auth_state.js?v=20260528authcompact';
@@ -523,6 +523,17 @@ const loginSourceButtons = authSourceSwitch
     ? Array.from(authSourceSwitch.querySelectorAll('[data-login-source]'))
     : [];
 let loginSource = 'xidian';
+function applyLoginCopy() {
+    const subtitle = document.querySelector('#authSubtitle');
+    if (!subtitle || currentMode !== 'login') return;
+    if (loginSource === 'platform') {
+        subtitle.textContent = document.body.dataset.lang === 'en'
+            ? 'Sign in with your study-abroad platform account'
+            : '请使用留学平台账号登录多模态AI招生面试智能评估系统';
+    } else {
+        subtitle.textContent = t('authLoginSubtitle');
+    }
+}
 function setLoginSource(source) {
     loginSource = source === 'platform' ? 'platform' : 'xidian';
     loginSourceButtons.forEach((button) => {
@@ -539,12 +550,12 @@ function setLoginSource(source) {
         if (emailLabel) emailLabel.textContent = '护照号 / Passport No.';
         if (emailInput) emailInput.placeholder = '请输入护照号 / Enter your passport number';
     }
+    applyLoginCopy();
     if (passwordInput) passwordInput.value = '';
 }
 loginSourceButtons.forEach((button) => {
     button.onclick = () => setLoginSource(button.dataset.loginSource);
 });
-setLoginSource('xidian');
 // Accounts are provisioned by the Xidian roster sync or the foreign affairs
 // platform; self-registration here cannot produce a usable passport login.
 const SELF_REGISTER_ENABLED = false;
@@ -1523,6 +1534,7 @@ function updateUIState() {
     const authSubtitleKey = currentMode === 'login' ? 'authLoginSubtitle' : (currentMode === 'register' ? 'brandRegisterCopy' : 'brandForgotCopy');
     document.querySelector('#authTitle').textContent = t(authTitleKey);
     document.querySelector('#authSubtitle').textContent = t(authSubtitleKey);
+    applyLoginCopy();
     passwordInput.placeholder = t(currentMode === 'register' ? 'authSetPasswordPlaceholder' : (currentMode === 'forgot' ? 'authNewPasswordPlaceholder' : 'authPasswordPlaceholder'));
     passwordInput.autocomplete = config.passwordAutocomplete || 'current-password';
     passwordInput.type = 'password';
