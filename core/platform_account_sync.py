@@ -147,23 +147,26 @@ def sync_platform_students(limit: int | None = None, dry_run: bool = False) -> d
     return {"stats": asdict(stats), "errors": errors, "dry_run": dry_run}
 
 
-def ensure_local_account_from_platform(db, passport_no: str) -> tuple[User | None, str | None]:
+def ensure_local_account_from_platform(db, account: str) -> tuple[User | None, str | None]:
     """Pull one account at login time so a fresh registration works immediately.
 
-    Returns (user, error_code). error_code is "not_found" or "unavailable".
+    ``account`` is what the student typed on the platform entry: a passport
+    number or the platform account email. Returns (user, error_code); error_code
+    is "not_found", "missing_passport" or "unavailable".
     The caller commits the session after a successful upsert.
     """
-    passport_no = normalize_passport_no(passport_no)
-    if not passport_no:
+    account = (account or "").strip()
+    if not account:
         return None, "not_found"
     try:
-        record = fetch_student(passport_no)
+        record = fetch_student(account)
     except PlatformAccountError:
         return None, "unavailable"
     if not record:
         return None, "not_found"
-    if normalize_passport_no(_text(record, "passport_no", 100)) != passport_no:
-        return None, "not_found"
+    passport_no = normalize_passport_no(_text(record, "passport_no", 100))
+    if not passport_no:
+        return None, "missing_passport"
     try:
         upsert_platform_student(db, record)
     except ValueError:

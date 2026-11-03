@@ -670,9 +670,7 @@ async def login(req: LoginRequest, request: Request = None):
                 }
             # Always resolve the account from the platform: this both provisions
             # a fresh registration immediately and keeps the password current.
-            user, platform_error = ensure_local_account_from_platform(
-                db, normalize_passport_no(login_id)
-            )
+            user, platform_error = ensure_local_account_from_platform(db, login_id)
             if user is None:
                 if platform_error == "unavailable":
                     return {
@@ -680,12 +678,18 @@ async def login(req: LoginRequest, request: Request = None):
                         "code": "platform_account_unavailable",
                         "message": "留学平台账号服务暂时不可用，请稍后重试。",
                     }
+                if platform_error == "missing_passport":
+                    return {
+                        "status": "error",
+                        "code": "platform_missing_passport",
+                        "message": "该留学平台账号尚未补全护照号，请先在平台补全后再登录。",
+                    }
                 record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
                 record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
                 return {
                     "status": "error",
                     "code": "not_registered_on_platform",
-                    "message": "该护照号尚未在留学平台注册，请使用西电面试账号入口登录。",
+                    "message": "该账号尚未在留学平台注册，请使用西电面试账号入口登录。",
                 }
             if not verify_password(req.password, user.password_hash):
                 record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
@@ -712,15 +716,19 @@ async def login(req: LoginRequest, request: Request = None):
             # Compatibility path for callers that do not send a login source.
             platform_error = None
             if user is None:
-                user, platform_error = ensure_local_account_from_platform(
-                    db, normalize_passport_no(login_id)
-                )
+                user, platform_error = ensure_local_account_from_platform(db, login_id)
                 if user is None:
                     if platform_error == "unavailable":
                         return {
                             "status": "error",
                             "code": "platform_account_unavailable",
                             "message": "账号同步服务暂时不可用，请稍后重试。",
+                        }
+                    if platform_error == "missing_passport":
+                        return {
+                            "status": "error",
+                            "code": "platform_missing_passport",
+                            "message": "该留学平台账号尚未补全护照号，请先在平台补全后再登录。",
                         }
                     record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
                     record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)

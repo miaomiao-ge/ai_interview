@@ -1,4 +1,4 @@
-import { loginAPI, registerAPI, sendEmailCodeAPI, resetPasswordAPI, startInterviewAPI, cancelInterviewAPI, endInterviewAPI, getInterviewStatusAPI, faceStatusAPI, facePrecheckAPI, faceProctoringAPI } from './api.js?v=20261103dualLogin';
+import { loginAPI, registerAPI, sendEmailCodeAPI, resetPasswordAPI, startInterviewAPI, cancelInterviewAPI, endInterviewAPI, getInterviewStatusAPI, faceStatusAPI, facePrecheckAPI, faceProctoringAPI } from './api.js?v=20261103accountLabel';
 import { UI } from './ui.js?v=20260531connectionBtnA';
 import { InterviewMediaManager } from './interview_media.js?v=20260811asrFixA';
 import { getAuthModeConfig, getEmailCodePurpose } from './auth_state.js?v=20260528authcompact';
@@ -518,6 +518,7 @@ const toggleModeBtn = document.getElementById('toggleModeBtn');
 const forgotPwdBtn = document.getElementById('forgotPwdBtn');
 const authSourceSwitch = document.getElementById('authSourceSwitch');
 const loginSourceHint = document.getElementById('loginSourceHint');
+const emailLabel = document.getElementById('emailLabel');
 const loginSourceButtons = authSourceSwitch
     ? Array.from(authSourceSwitch.querySelectorAll('[data-login-source]'))
     : [];
@@ -529,16 +530,21 @@ function setLoginSource(source) {
         button.classList.toggle('active', active);
         button.setAttribute('aria-selected', active ? 'true' : 'false');
     });
-    if (loginSourceHint) {
-        loginSourceHint.textContent = loginSource === 'platform'
-            ? '护照号 + 留学平台密码'
-            : '护照号 + 原面试密码';
+    if (loginSource === 'platform') {
+        if (loginSourceHint) loginSourceHint.textContent = '账号 + 留学平台密码';
+        if (emailLabel) emailLabel.textContent = '账号 / Account';
+        if (emailInput) emailInput.placeholder = '请输入护照号或邮箱 / Passport or email';
+    } else {
+        if (loginSourceHint) loginSourceHint.textContent = '护照号 + 原面试密码';
+        if (emailLabel) emailLabel.textContent = '护照号 / Passport No.';
+        if (emailInput) emailInput.placeholder = '请输入护照号 / Enter your passport number';
     }
     if (passwordInput) passwordInput.value = '';
 }
 loginSourceButtons.forEach((button) => {
     button.onclick = () => setLoginSource(button.dataset.loginSource);
 });
+setLoginSource('xidian');
 // Accounts are provisioned by the Xidian roster sync or the foreign affairs
 // platform; self-registration here cannot produce a usable passport login.
 const SELF_REGISTER_ENABLED = false;
@@ -1493,6 +1499,7 @@ if (reselectLangBtn) {
 
 function updateUIState() {
     if (!SELF_REGISTER_ENABLED && currentMode === 'register') currentMode = 'login';
+    if (currentMode !== 'login' && loginSource === 'platform') setLoginSource('xidian');
     authStatus.innerText = "";
     const preservedEmail = emailInput.value;
     emailInput.value = preservedEmail;

@@ -48,8 +48,8 @@ def _get(path: str, params: dict) -> dict:
     return payload
 
 
-def fetch_student(passport_no: str) -> dict | None:
-    payload = _get("/account/api/internal/students", {"passport_no": passport_no, "page": 1, "page_size": 1})
+def fetch_student(account: str) -> dict | None:
+    payload = _get("/account/api/internal/students", {"account": account, "page": 1, "page_size": 1})
     students = payload.get("students")
     if not isinstance(students, list):
         raise PlatformAccountError("平台账号服务返回结构不正确")

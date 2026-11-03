@@ -130,6 +130,21 @@ def test_ensure_pulls_account_on_demand(monkeypatch):
     assert db.committed is True
 
 
+def test_ensure_pulls_account_by_email(monkeypatch):
+    db = FakeDb()
+    monkeypatch.setattr(sync, "fetch_student", lambda account: record())
+    user, error = sync.ensure_local_account_from_platform(db, "student@example.com")
+    assert error is None
+    assert user is db.added
+    assert db.committed is True
+
+
+def test_ensure_reports_missing_passport(monkeypatch):
+    db = FakeDb()
+    monkeypatch.setattr(sync, "fetch_student", lambda account: record(passport_no=""))
+    assert sync.ensure_local_account_from_platform(db, "student@example.com") == (None, "missing_passport")
+
+
 def test_ensure_reports_missing_account(monkeypatch):
     db = FakeDb()
     monkeypatch.setattr(sync, "fetch_student", lambda passport_no: None)
