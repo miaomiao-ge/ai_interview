@@ -19,6 +19,7 @@ class SyncStats:
     updated: int = 0
     linked: int = 0
     skipped: int = 0
+    conflicts: int = 0
     failed: int = 0
 
 
@@ -93,12 +94,19 @@ def upsert_platform_student(db, record: dict, dry_run: bool = False) -> str:
         return action
 
     auth_source = getattr(user, "auth_source", None) or "xidian"
+    platform_source = str(record.get("source") or "").strip()
     if auth_source == "platform":
         action = "updated" if _differs(user, record) else "skipped"
         if action == "skipped" or dry_run:
             return action
         user.password_hash = password_hash
     else:
+        if platform_source in {"qa", "manual_test", "local_manual_test"}:
+            return "skipped"
+        if platform_source == "xidian_api" and (user.password_hash or "") != password_hash:
+            # The platform copy of a roster snapshot can be older than a password
+            # the student changed in AI; do not silently revert it.
+            return "conflict"
         # A platform registration takes over an existing Xidian account. Keep the
         # original email and all Xidian application fields.
         action = "linked"
@@ -128,7 +136,8 @@ def sync_platform_students(limit: int | None = None, dry_run: bool = False) -> d
                 db.rollback()
             else:
                 db.commit()
-            setattr(stats, action, getattr(stats, action) + 1)
+            stat_name = "conflicts" if action == "conflict" else action
+            setattr(stats, stat_name, getattr(stats, stat_name) + 1)
         except Exception as exc:
             db.rollback()
             stats.failed += 1

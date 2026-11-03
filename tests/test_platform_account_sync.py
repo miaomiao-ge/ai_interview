@@ -144,3 +144,44 @@ def test_ensure_reports_unavailable_platform(monkeypatch):
 
     monkeypatch.setattr(sync, "fetch_student", boom)
     assert sync.ensure_local_account_from_platform(db, "P1") == (None, "unavailable")
+
+
+def test_xidian_snapshot_with_same_password_is_linked():
+    user = User(
+        email="legacy@example.com",
+        passport_no="P1234567",
+        password_hash="$2b$12$platform-hash",
+        auth_source="xidian",
+        status="active",
+    )
+    db = FakeDb(user)
+    action = sync.upsert_platform_student(db, record(source="xidian_api"))
+    assert action == "linked"
+    assert user.auth_source == "platform"
+
+
+def test_xidian_snapshot_with_changed_password_is_a_conflict():
+    user = User(
+        email="legacy@example.com",
+        passport_no="P1234567",
+        password_hash="ai-changed-password",
+        auth_source="xidian",
+        status="active",
+    )
+    db = FakeDb(user)
+    action = sync.upsert_platform_student(db, record(source="xidian_api"))
+    assert action == "conflict"
+    assert user.auth_source == "xidian"
+    assert user.password_hash == "ai-changed-password"
+
+
+def test_test_source_is_skipped():
+    user = User(
+        email="legacy@example.com",
+        passport_no="P1234567",
+        password_hash="anything",
+        auth_source="xidian",
+        status="active",
+    )
+    db = FakeDb(user)
+    assert sync.upsert_platform_student(db, record(source="qa")) == "skipped"
