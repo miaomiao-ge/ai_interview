@@ -3988,8 +3988,8 @@ body {
 .prep-steps {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    width: min(930px, 74%);
+    grid-template-columns: repeat(5, 1fr);
+    width: min(1100px, 86%);
     margin: 24px auto 20px;
     padding: 0;
     list-style: none;
@@ -3999,8 +3999,8 @@ body {
     content: "";
     position: absolute;
     top: 19px;
-    left: 11%;
-    right: 11%;
+    left: 10%;
+    right: 10%;
     height: 3px;
     background: #d9e0ea;
     border-radius: 99px;
@@ -4010,8 +4010,8 @@ body {
     content: "";
     position: absolute;
     top: 19px;
-    left: 11%;
-    right: 11%;
+    left: 10%;
+    right: 10%;
     height: 3px;
     background: linear-gradient(90deg, #079b99 0%, #0aa39d 45%, #1677ff 100%);
     border-radius: 99px;

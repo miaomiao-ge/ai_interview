@@ -8,8 +8,15 @@ import re
 from dataclasses import asdict, dataclass
 from datetime import datetime
 
+from core.config import FACE_OSS_BUCKET_NAME, FACE_OSS_ENDPOINT
 from core.database import SessionLocal, User
-from core.platform_account_client import PlatformAccountError, fetch_student, iter_students
+from core.oss_utils import upload_bytes_to_oss
+from core.platform_account_client import (
+    PlatformAccountError,
+    fetch_student,
+    fetch_student_photo,
+    iter_students,
+)
 
 
 @dataclass
@@ -48,6 +55,68 @@ def _platform_id(record: dict):
         return int(record.get("id"))
     except (TypeError, ValueError):
         return None
+
+
+def _parse_datetime(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+def _fill_face(db, user, record: dict, now: datetime, dry_run: bool = False) -> bool:
+    if dry_run or (getattr(user, "face_image_oss_key", "") or "").strip():
+        return False
+    key = _text(record, "face_image_oss_key", 255)
+    source = _text(record, "face_image_source", 50)
+    if key:
+        user.face_image_oss_key = key
+        user.face_image_source = source or "platform_official"
+        user.face_enrolled_at = _parse_datetime(record.get("face_enrolled_at")) or now
+        user.official_photo_synced_at = _parse_datetime(record.get("official_photo_synced_at")) or now
+        db.flush()
+        return True
+
+    if not record.get("has_photo"):
+        return False
+
+    passport_no = normalize_passport_no(_text(record, "passport_no", 100))
+    try:
+        photo = fetch_student_photo(passport_no)
+    except PlatformAccountError:
+        return False
+    if not photo:
+        return False
+    if photo.get("kind") == "oss" and photo.get("key"):
+        user.face_image_oss_key = str(photo["key"]).strip()
+        user.face_image_source = str(photo.get("source") or "platform_official").strip() or "platform_official"
+        user.face_enrolled_at = _parse_datetime(photo.get("enrolled_at")) or now
+        user.official_photo_synced_at = _parse_datetime(photo.get("synced_at")) or now
+        db.flush()
+        return True
+    if photo.get("kind") == "bytes" and photo.get("content"):
+        extension = str(photo.get("extension") or "jpg").lower()
+        oss_key = f"face/platform/{passport_no.lower()}.{extension}"
+        try:
+            upload_bytes_to_oss(
+                photo["content"],
+                oss_key,
+                True,
+                endpoint=FACE_OSS_ENDPOINT,
+                bucket_name=FACE_OSS_BUCKET_NAME,
+                quiet=True,
+            )
+        except Exception:
+            return False
+        user.face_image_oss_key = oss_key
+        user.face_image_source = "platform_profile"
+        user.face_enrolled_at = now
+        user.official_photo_synced_at = now
+        db.flush()
+        return True
+    return False
 
 
 def _differs(user: User, record: dict) -> bool:
@@ -99,9 +168,11 @@ def upsert_platform_student(db, record: dict, dry_run: bool = False) -> str:
             )
             db.add(user)
             db.flush()
+            _fill_face(db, user, record, now, dry_run)
         return action
 
     auth_source = getattr(user, "auth_source", None) or "xidian"
+    _fill_face(db, user, record, now, dry_run)
 
     if is_roster:
         if auth_source == "platform":

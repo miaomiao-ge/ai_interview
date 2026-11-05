@@ -1,4 +1,4 @@
-import { loginAPI, registerAPI, sendEmailCodeAPI, resetPasswordAPI, startInterviewAPI, cancelInterviewAPI, endInterviewAPI, getInterviewStatusAPI, faceStatusAPI, facePrecheckAPI, faceProctoringAPI } from './api.js?v=20261103tabstay';
+import { loginAPI, registerAPI, sendEmailCodeAPI, resetPasswordAPI, startInterviewAPI, cancelInterviewAPI, endInterviewAPI, getInterviewStatusAPI, faceStatusAPI, facePrecheckAPI, faceProctoringAPI } from './api.js?v=20261105single';
 import { UI } from './ui.js?v=20260531connectionBtnA';
 import { InterviewMediaManager } from './interview_media.js?v=20260811asrFixA';
 import { getAuthModeConfig, getEmailCodePurpose } from './auth_state.js?v=20260528authcompact';
@@ -7,7 +7,7 @@ import { initDeepSeaVoiceprint } from './auth_deepsea_voiceprint.js?v=20260530au
 import { initAuthWave } from './auth_wave_canvas.js?v=20260531memoryA';
 import { initRoomMotion } from './room_motion.js?v=20260530roompolish';
 import { captureTemporaryCameraFrame, captureVideoFrame, createProctoringLoop } from './face_capture.js?v=face001';
-import { applyI18n, createLanguageSwitcher, getLanguage, t } from './i18n.js?v=20260609i18nF';
+import { applyI18n, createLanguageSwitcher, getLanguage, t } from './i18n.js?v=20261105single';
 
 const originalStart = UI.startAnswerSession;
 UI.startAnswerSession = function() {
@@ -516,46 +516,6 @@ const authBtn = document.getElementById('authBtn');
 const authForm = document.getElementById('authForm');
 const toggleModeBtn = document.getElementById('toggleModeBtn');
 const forgotPwdBtn = document.getElementById('forgotPwdBtn');
-const authSourceSwitch = document.getElementById('authSourceSwitch');
-const loginSourceHint = document.getElementById('loginSourceHint');
-const emailLabel = document.getElementById('emailLabel');
-const loginSourceButtons = authSourceSwitch
-    ? Array.from(authSourceSwitch.querySelectorAll('[data-login-source]'))
-    : [];
-let loginSource = 'xidian';
-function applyLoginCopy() {
-    const subtitle = document.querySelector('#authSubtitle');
-    if (!subtitle || currentMode !== 'login') return;
-    if (loginSource === 'platform') {
-        subtitle.textContent = document.body.dataset.lang === 'en'
-            ? 'Sign in with your study-abroad platform account'
-            : '请使用留学平台账号登录多模态AI招生面试智能评估系统';
-    } else {
-        subtitle.textContent = t('authLoginSubtitle');
-    }
-}
-function setLoginSource(source) {
-    loginSource = source === 'platform' ? 'platform' : 'xidian';
-    loginSourceButtons.forEach((button) => {
-        const active = button.dataset.loginSource === loginSource;
-        button.classList.toggle('active', active);
-        button.setAttribute('aria-selected', active ? 'true' : 'false');
-    });
-    if (loginSource === 'platform') {
-        if (loginSourceHint) loginSourceHint.textContent = '账号 + 留学平台密码';
-        if (emailLabel) emailLabel.textContent = '账号 / Account';
-        if (emailInput) emailInput.placeholder = '请输入护照号或邮箱 / Passport or email';
-    } else {
-        if (loginSourceHint) loginSourceHint.textContent = '护照号 + 原面试密码';
-        if (emailLabel) emailLabel.textContent = '护照号 / Passport No.';
-        if (emailInput) emailInput.placeholder = '请输入护照号 / Enter your passport number';
-    }
-    applyLoginCopy();
-    if (passwordInput) passwordInput.value = '';
-}
-loginSourceButtons.forEach((button) => {
-    button.onclick = () => setLoginSource(button.dataset.loginSource);
-});
 // Accounts are provisioned by the Xidian roster sync or the foreign affairs
 // platform; self-registration here cannot produce a usable passport login.
 const SELF_REGISTER_ENABLED = false;
@@ -675,7 +635,7 @@ function applyStaticI18n() {
     setText('.prep-title', 'prepTitle');
     setText('.prep-copy', 'prepCopy');
     document.querySelectorAll('.prep-step b').forEach((step, index) => {
-        const keys = ['prepStepDevice', 'prepStepEnvironment', 'prepStepAgreement', 'prepStepReady'];
+        const keys = ['prepStepDevice', 'prepStepEnvironment', 'prepStepAgreement', 'prepStepFace', 'prepStepReady'];
         if (keys[index]) step.textContent = t(keys[index]);
     });
     setText('.prep-section-title', 'prepInterviewLanguage');
@@ -928,6 +888,7 @@ const prepState = {
     recording: false,
     agreement: false,
     faceVerified: false,
+    faceError: false,
     permissionChecked: false,
     checking: false,
     faceChecking: false,
@@ -974,9 +935,10 @@ function updatePrepReadiness(message = '') {
     setPrepStepState(0, deviceCheckDone ? 'is-done' : (prepState.checking || !prepState.checkAttempted ? 'is-active' : 'is-error'));
     setPrepStepState(1, environmentDone ? 'is-done' : (prepState.checking && deviceCheckDone ? 'is-active' : (prepState.checkAttempted ? 'is-error' : '')));
     setPrepStepState(2, prepState.agreement && devicesReady ? 'is-done' : (devicesReady ? 'is-active' : ''));
-    setPrepStepState(3, ready ? 'is-done' : (prepState.faceChecking || (devicesReady && prepState.agreement) ? 'is-active' : ''));
+    setPrepStepState(3, prepState.faceVerified ? 'is-done' : (prepState.faceError && devicesReady && prepState.agreement ? 'is-error' : (prepState.faceChecking || (devicesReady && prepState.agreement) ? 'is-active' : '')));
+    setPrepStepState(4, ready ? 'is-done' : (prepState.faceVerified ? 'is-active' : ''));
 
-    const progress = ready ? 1 : (prepState.agreement && devicesReady ? 0.82 : (devicesReady ? 0.66 : (deviceCheckDone ? 0.33 : 0)));
+    const progress = ready ? 1 : (prepState.faceVerified ? 0.9 : (prepState.agreement && devicesReady ? 0.75 : (devicesReady ? 0.5 : (deviceCheckDone ? 0.25 : 0))));
     setPrepProgress(progress);
 
     if (initInterviewBtn) {
@@ -1508,9 +1470,16 @@ if (reselectLangBtn) {
     };
 }
 
+function applyLoginSubtitle() {
+    const subtitle = document.querySelector('#authSubtitle');
+    if (!subtitle || currentMode !== 'login') return;
+    subtitle.textContent = document.body.dataset.lang === 'en'
+        ? 'Sign in with your passport number or email'
+        : '请使用护照号或邮箱登录多模态AI招生面试智能评估系统';
+}
+
 function updateUIState() {
     if (!SELF_REGISTER_ENABLED && currentMode === 'register') currentMode = 'login';
-    if (currentMode !== 'login' && loginSource === 'platform') setLoginSource('xidian');
     authStatus.innerText = "";
     const preservedEmail = emailInput.value;
     emailInput.value = preservedEmail;
@@ -1518,8 +1487,6 @@ function updateUIState() {
     passwordInput.value = "";
     usernameInput.value = "";
 
-    if (authSourceSwitch) authSourceSwitch.style.display = currentMode === 'login' ? 'flex' : 'none';
-    if (loginSourceHint) loginSourceHint.style.display = currentMode === 'login' ? 'block' : 'none';
     const config = getAuthModeConfig(currentMode);
     if (loginOverlay) loginOverlay.dataset.mode = currentMode;
     brandModes.forEach((brandMode) => {
@@ -1534,7 +1501,7 @@ function updateUIState() {
     const authSubtitleKey = currentMode === 'login' ? 'authLoginSubtitle' : (currentMode === 'register' ? 'brandRegisterCopy' : 'brandForgotCopy');
     document.querySelector('#authTitle').textContent = t(authTitleKey);
     document.querySelector('#authSubtitle').textContent = t(authSubtitleKey);
-    applyLoginCopy();
+    applyLoginSubtitle();
     passwordInput.placeholder = t(currentMode === 'register' ? 'authSetPasswordPlaceholder' : (currentMode === 'forgot' ? 'authNewPasswordPlaceholder' : 'authPasswordPlaceholder'));
     passwordInput.autocomplete = config.passwordAutocomplete || 'current-password';
     passwordInput.type = 'password';
@@ -1625,7 +1592,7 @@ async function handleAuthSubmit(event) {
     try {
         if (currentMode === 'login') {
             if (!account) throw new Error(t('invalidPassport'));
-            const res = await loginAPI(account, pass, loginSource);
+            const res = await loginAPI(account, pass);
             if (res.status === "success") {
                 localStorage.setItem('ai_interviewer_token', res.token);
                 authStatus.innerText = `✓ ${t('loginSuccess')}`;
@@ -1676,6 +1643,7 @@ async function ensureFaceReadyBeforeInterview({ force = false } = {}) {
     }
 
     prepState.faceChecking = true;
+    prepState.faceError = false;
     setPrepCheckState('face', 'checking', '\u6838\u9a8c\u4e2d / Checking', 'Checking');
     updatePrepReadiness(getLangText('\u6b63\u5728\u8fdb\u884c\u4eba\u8138\u8eab\u4efd\u6838\u9a8c...', 'Verifying face identity...'));
 
@@ -1691,11 +1659,13 @@ async function ensureFaceReadyBeforeInterview({ force = false } = {}) {
         const verified = await runFaceVerificationPanel();
 
         prepState.faceVerified = true;
+        prepState.faceError = false;
         setPrepCheckState('face', 'ok', '\u5df2\u901a\u8fc7 / Verified', 'Verified');
         updatePrepReadiness(getLangText('\u4eba\u8138\u8eab\u4efd\u6838\u9a8c\u5df2\u901a\u8fc7\uff0c\u53ef\u4ee5\u8fdb\u5165\u9762\u8bd5\u5ba4\u3002', 'Face verification passed. You may enter the interview room.'));
         return verified;
     } catch (error) {
         prepState.faceVerified = false;
+        prepState.faceError = true;
         setPrepCheckState('face', 'error', '\u672a\u901a\u8fc7 / Failed', 'Failed');
         updatePrepReadiness(error.message || getLangText('\u4eba\u8138\u8eab\u4efd\u6838\u9a8c\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5\u3002', 'Face verification failed. Please retry.'));
         throw error;

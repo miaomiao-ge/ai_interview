@@ -231,3 +231,78 @@ def test_test_source_is_skipped():
     )
     db = FakeDb(user)
     assert sync.upsert_platform_student(db, record(source="qa")) == "skipped"
+
+
+def test_copies_platform_official_face_key():
+    user = User(
+        email="legacy@example.com",
+        passport_no="P1234567",
+        password_hash="$2b$12$platform-hash",
+        auth_source="xidian",
+        status="active",
+        face_image_oss_key="",
+    )
+    db = FakeDb(user)
+    sync.upsert_platform_student(
+        db,
+        record(
+            source="xidian_api",
+            face_image_oss_key="face/official/P1234567.jpg",
+            face_image_source="xidian_official",
+            has_photo=True,
+        ),
+    )
+    assert user.face_image_oss_key == "face/official/P1234567.jpg"
+    assert user.face_image_source == "xidian_official"
+
+
+def test_existing_ai_face_is_not_overwritten():
+    user = User(
+        email="legacy@example.com",
+        passport_no="P1234567",
+        password_hash="$2b$12$platform-hash",
+        auth_source="xidian",
+        status="active",
+        face_image_oss_key="face/ai/enrolled.jpg",
+    )
+    db = FakeDb(user)
+    sync.upsert_platform_student(
+        db,
+        record(
+            source="xidian_api",
+            face_image_oss_key="face/official/P1234567.jpg",
+            has_photo=True,
+        ),
+    )
+    assert user.face_image_oss_key == "face/ai/enrolled.jpg"
+
+
+def test_fetches_minio_photo_and_uploads_to_ai_oss(monkeypatch):
+    user = User(
+        email="legacy@example.com",
+        passport_no="P1234567",
+        password_hash="$2b$12$platform-hash",
+        auth_source="xidian",
+        status="active",
+        face_image_oss_key="",
+    )
+    db = FakeDb(user)
+    calls = []
+
+    monkeypatch.setattr(
+        sync,
+        "fetch_student_photo",
+        lambda account: {"kind": "bytes", "content": b"image-bytes", "extension": "jpg"},
+    )
+
+    def fake_upload(content, key, overwrite, **kwargs):
+        calls.append((content, key, overwrite, kwargs))
+
+    monkeypatch.setattr(sync, "upload_bytes_to_oss", fake_upload)
+    sync.upsert_platform_student(
+        db,
+        record(source="platform_local", has_photo=True),
+    )
+    assert user.face_image_oss_key == "face/platform/p1234567.jpg"
+    assert user.face_image_source == "platform_profile"
+    assert calls and calls[0][0] == b"image-bytes"

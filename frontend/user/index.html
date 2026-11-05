@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI面试系统</title>
-    <link rel="stylesheet" href="/static/user/css/style.css?v=20260616prepLogoutA">
+    <link rel="stylesheet" href="/static/user/css/style.css?v=20261105prep5">
 
     <style>
         /* ✨ 核心魔法：限定隐藏范围！只有进入 #interviewSection 面试区后，单语种隔离才会生效！ */
@@ -164,20 +164,16 @@
             <form id="authForm" class="auth-form-panel" novalidate>
                 <h2 id="authTitle" class="login-title"></h2>
                 <p id="authSubtitle" class="login-subtitle"></p>
-                <div id="authSourceSwitch" class="auth-source-switch" role="tablist" aria-label="登录入口">
-                    <button type="button" class="auth-source-btn active" data-login-source="xidian" role="tab" aria-selected="true">西电面试账号 / Xidian</button>
-                    <button type="button" class="auth-source-btn" data-login-source="platform" role="tab" aria-selected="false">留学平台账号 / Platform</button>
-                </div>
-                <p id="loginSourceHint" class="auth-source-hint">护照号 + 原面试密码</p>
+                <p class="auth-source-hint">护照号/邮箱 + 密码</p>
                 <div class="auth-mode-hint auth-mode-hint-forgot">
                     <img src="/static/user/assets/auth-icon-shield-check.png" alt="" aria-hidden="true">
                     <p>请输入您注册时使用的邮箱，我们将向您发送验证码，验证通过后即可设置新密码。<span class="i18n-en">Enter the email used during registration. We will send you a verification code, then you can set a new password.</span></p>
                 </div>
 
                 <div class="input-group auth-field" id="wrapEmail">
-                    <label class="field-label" id="emailLabel" for="emailInput">护照号 / Passport No.</label>
+                    <label class="field-label" for="emailInput">账号 / Account</label>
                     <div class="auth-input-shell auth-status-shell" data-icon="email">
-                        <input type="text" id="emailInput" class="custom-input" placeholder="请输入护照号 / Enter your passport number" autocomplete="username" autofocus>
+                        <input type="text" id="emailInput" class="custom-input" placeholder="请输入护照号或邮箱 / Passport or email" autocomplete="username" autofocus>
                     </div>
                 </div>
                 <div class="input-group auth-field auth-code-row" id="wrapCode" style="display: none;">
@@ -270,6 +266,10 @@
                 </li>
                 <li class="prep-step">
                     <span class="prep-step-mark">4</span>
+                    <b>人脸核验<span class="i18n-en">Face Verification</span></b>
+                </li>
+                <li class="prep-step">
+                    <span class="prep-step-mark">5</span>
                     <b>准备完成<span class="i18n-en">Ready</span></b>
                 </li>
             </ol>
@@ -459,6 +459,6 @@
         </div>
     </div>
 
-    <script type="module" src="/static/user/js/main.js?v=20261103tabstay"></script>
+    <script type="module" src="/static/user/js/main.js?v=20261105single"></script>
 </body>
 </html>
