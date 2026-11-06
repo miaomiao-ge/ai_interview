@@ -1474,8 +1474,8 @@ function applyLoginSubtitle() {
     const subtitle = document.querySelector('#authSubtitle');
     if (!subtitle || currentMode !== 'login') return;
     subtitle.textContent = document.body.dataset.lang === 'en'
-        ? 'Sign in with your passport number or email'
-        : '请使用护照号或邮箱登录多模态AI招生面试智能评估系统';
+        ? 'Sign in with the account registered on the international student platform'
+        : '请使用留学生平台注册的账号登录';
 }
 
 function updateUIState() {
