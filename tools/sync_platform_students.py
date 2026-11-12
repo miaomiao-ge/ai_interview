@@ -10,9 +10,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from core.config import (
-    PLATFORM_ACCOUNT_API_BASE,
+    PLATFORM_ACCOUNT_SOURCES,
     PLATFORM_ACCOUNT_SYNC_ENABLED,
-    PLATFORM_ACCOUNT_SYNC_TOKEN,
 )
 from core.database import SessionLocal, init_db
 from core.platform_account_sync import sync_platform_students
@@ -30,7 +29,7 @@ def main() -> int:
     if not args.dry_run and not PLATFORM_ACCOUNT_SYNC_ENABLED:
         print(json.dumps({"status": "disabled", "message": "PLATFORM_ACCOUNT_SYNC_ENABLED=0"}, ensure_ascii=False))
         return 0
-    if not PLATFORM_ACCOUNT_API_BASE or not PLATFORM_ACCOUNT_SYNC_TOKEN:
+    if not PLATFORM_ACCOUNT_SOURCES:
         print(json.dumps({"status": "not_configured"}, ensure_ascii=False))
         return 2
 

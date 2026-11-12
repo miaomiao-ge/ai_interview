@@ -3,6 +3,9 @@ from core.database import User
 from core.platform_account_client import PlatformAccountError
 
 
+TEST_SOURCE = {"name": "test", "base": "http://platform.test", "token": "test-token"}
+
+
 class FakeQuery:
     def __init__(self, db):
         self.db = db
@@ -123,7 +126,7 @@ def test_dry_run_does_not_write():
 
 def test_ensure_pulls_account_on_demand(monkeypatch):
     db = FakeDb()
-    monkeypatch.setattr(sync, "fetch_student", lambda passport_no: record())
+    monkeypatch.setattr(sync, "fetch_students", lambda passport_no: [(TEST_SOURCE, record())])
     user, error = sync.ensure_local_account_from_platform(db, " P 1234567 ")
     assert error is None
     assert user is db.added
@@ -132,7 +135,7 @@ def test_ensure_pulls_account_on_demand(monkeypatch):
 
 def test_ensure_pulls_account_by_email(monkeypatch):
     db = FakeDb()
-    monkeypatch.setattr(sync, "fetch_student", lambda account: record())
+    monkeypatch.setattr(sync, "fetch_students", lambda account: [(TEST_SOURCE, record())])
     user, error = sync.ensure_local_account_from_platform(db, "student@example.com")
     assert error is None
     assert user is db.added
@@ -141,13 +144,13 @@ def test_ensure_pulls_account_by_email(monkeypatch):
 
 def test_ensure_reports_missing_passport(monkeypatch):
     db = FakeDb()
-    monkeypatch.setattr(sync, "fetch_student", lambda account: record(passport_no=""))
+    monkeypatch.setattr(sync, "fetch_students", lambda account: [(TEST_SOURCE, record(passport_no=""))])
     assert sync.ensure_local_account_from_platform(db, "student@example.com") == (None, "missing_passport")
 
 
 def test_ensure_reports_missing_account(monkeypatch):
     db = FakeDb()
-    monkeypatch.setattr(sync, "fetch_student", lambda passport_no: None)
+    monkeypatch.setattr(sync, "fetch_students", lambda passport_no: [])
     assert sync.ensure_local_account_from_platform(db, "P1") == (None, "not_found")
 
 
@@ -157,7 +160,7 @@ def test_ensure_reports_unavailable_platform(monkeypatch):
     def boom(passport_no):
         raise PlatformAccountError("down")
 
-    monkeypatch.setattr(sync, "fetch_student", boom)
+    monkeypatch.setattr(sync, "fetch_students", boom)
     assert sync.ensure_local_account_from_platform(db, "P1") == (None, "unavailable")
 
 
@@ -292,7 +295,7 @@ def test_fetches_minio_photo_and_uploads_to_ai_oss(monkeypatch):
     monkeypatch.setattr(
         sync,
         "fetch_student_photo",
-        lambda account: {"kind": "bytes", "content": b"image-bytes", "extension": "jpg"},
+        lambda account, source=None: {"kind": "bytes", "content": b"image-bytes", "extension": "jpg"},
     )
 
     def fake_upload(content, key, overwrite, **kwargs):

@@ -50,7 +50,7 @@ from core.config import (
 from core.config import ANSWER_AUDIO_UPLOAD_MAX_BYTES, MEDIA_UPLOAD_MAX_BYTES, OSS_PATH_PREFIX
 from core.config import FACE_VERIFY_ENABLED
 from core.config import PLATFORM_ACCOUNT_LOGIN_URL, SELF_REGISTER_ENABLED
-from core.config import PLATFORM_ACCOUNT_API_BASE, PLATFORM_ACCOUNT_SYNC_TOKEN
+from core.config import PLATFORM_ACCOUNT_SOURCES
 from core.concurrency_guard import (
     release_active_asr,
     release_active_session,
@@ -668,7 +668,7 @@ async def login(req: LoginRequest, request: Request = None):
         user = find_user_by_login_identifier(db, login_id)
 
         if login_source == "platform":
-            if not PLATFORM_ACCOUNT_API_BASE or not PLATFORM_ACCOUNT_SYNC_TOKEN:
+            if not PLATFORM_ACCOUNT_SOURCES:
                 return {
                     "status": "error",
                     "code": "platform_account_not_configured",
@@ -676,7 +676,7 @@ async def login(req: LoginRequest, request: Request = None):
                 }
             # Always resolve the account from the platform: this both provisions
             # a fresh registration immediately and keeps the password current.
-            user, platform_error = ensure_local_account_from_platform(db, login_id)
+            user, platform_error = ensure_local_account_from_platform(db, login_id, req.password)
             if user is None:
                 if platform_error == "unavailable":
                     return {
@@ -728,7 +728,7 @@ async def login(req: LoginRequest, request: Request = None):
             # Compatibility path for callers that do not send a login source.
             platform_error = None
             if user is None:
-                user, platform_error = ensure_local_account_from_platform(db, login_id)
+                user, platform_error = ensure_local_account_from_platform(db, login_id, req.password)
                 if user is None:
                     if platform_error == "unavailable":
                         return {
@@ -749,7 +749,7 @@ async def login(req: LoginRequest, request: Request = None):
             if not verify_password(req.password, user.password_hash):
                 auth_source = getattr(user, "auth_source", "xidian") or "xidian"
                 refreshed, refresh_error = ensure_local_account_from_platform(
-                    db, user.passport_no or login_id
+                    db, user.passport_no or login_id, req.password
                 )
                 if refreshed is not None:
                     user = refreshed

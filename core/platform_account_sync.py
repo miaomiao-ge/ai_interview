@@ -8,12 +8,13 @@ import re
 from dataclasses import asdict, dataclass
 from datetime import datetime
 
-from core.config import FACE_OSS_BUCKET_NAME, FACE_OSS_ENDPOINT
+from core.config import FACE_OSS_BUCKET_NAME, FACE_OSS_ENDPOINT, PLATFORM_ACCOUNT_SOURCES
 from core.database import SessionLocal, User
 from core.oss_utils import upload_bytes_to_oss
+from core.passwords import verify_password
 from core.platform_account_client import (
     PlatformAccountError,
-    fetch_student,
+    fetch_students,
     fetch_student_photo,
     iter_students,
 )
@@ -66,7 +67,7 @@ def _parse_datetime(value):
         return None
 
 
-def _fill_face(db, user, record: dict, now: datetime, dry_run: bool = False) -> bool:
+def _fill_face(db, user, record: dict, now: datetime, dry_run: bool = False, source: dict | None = None) -> bool:
     if dry_run or (getattr(user, "face_image_oss_key", "") or "").strip():
         return False
     key = _text(record, "face_image_oss_key", 255)
@@ -84,7 +85,7 @@ def _fill_face(db, user, record: dict, now: datetime, dry_run: bool = False) -> 
 
     passport_no = normalize_passport_no(_text(record, "passport_no", 100))
     try:
-        photo = fetch_student_photo(passport_no)
+        photo = fetch_student_photo(passport_no, source=source)
     except PlatformAccountError:
         return False
     if not photo:
@@ -130,7 +131,7 @@ def _differs(user: User, record: dict) -> bool:
     )
 
 
-def upsert_platform_student(db, record: dict, dry_run: bool = False) -> str:
+def upsert_platform_student(db, record: dict, source: dict | None = None, dry_run: bool = False) -> str:
     passport_no = normalize_passport_no(_text(record, "passport_no", 100))
     if not passport_no:
         raise ValueError("平台账号缺少护照号")
@@ -168,11 +169,11 @@ def upsert_platform_student(db, record: dict, dry_run: bool = False) -> str:
             )
             db.add(user)
             db.flush()
-            _fill_face(db, user, record, now, dry_run)
+            _fill_face(db, user, record, now, dry_run, source)
         return action
 
     auth_source = getattr(user, "auth_source", None) or "xidian"
-    _fill_face(db, user, record, now, dry_run)
+    _fill_face(db, user, record, now, dry_run, source)
 
     if is_roster:
         if auth_source == "platform":
@@ -236,48 +237,68 @@ def upsert_platform_student(db, record: dict, dry_run: bool = False) -> str:
 def sync_platform_students(limit: int | None = None, dry_run: bool = False) -> dict:
     stats = SyncStats()
     errors = []
-    for record in iter_students(limit=limit):
-        stats.received += 1
-        db = SessionLocal()
+    for source in PLATFORM_ACCOUNT_SOURCES:
         try:
-            action = upsert_platform_student(db, record, dry_run=dry_run)
-            if dry_run:
-                db.rollback()
-            else:
-                db.commit()
-            stat_name = "conflicts" if action == "conflict" else action
-            setattr(stats, stat_name, getattr(stats, stat_name) + 1)
-        except Exception as exc:
-            db.rollback()
+            for _, record in iter_students(limit=limit, source=source):
+                stats.received += 1
+                db = SessionLocal()
+                try:
+                    action = upsert_platform_student(db, record, source=source, dry_run=dry_run)
+                    if dry_run:
+                        db.rollback()
+                    else:
+                        db.commit()
+                    stat_name = "conflicts" if action == "conflict" else action
+                    setattr(stats, stat_name, getattr(stats, stat_name) + 1)
+                except Exception as exc:
+                    db.rollback()
+                    stats.failed += 1
+                    errors.append({"source": source.get("name"), "platform_user_id": _platform_id(record), "error": str(exc)})
+                finally:
+                    db.close()
+        except PlatformAccountError as exc:
             stats.failed += 1
-            errors.append({"platform_user_id": _platform_id(record), "error": str(exc)})
-        finally:
-            db.close()
+            errors.append({"source": source.get("name"), "error": str(exc)})
     return {"stats": asdict(stats), "errors": errors, "dry_run": dry_run}
 
 
-def ensure_local_account_from_platform(db, account: str) -> tuple[User | None, str | None]:
+def ensure_local_account_from_platform(
+    db, account: str, password: str | None = None
+) -> tuple[User | None, str | None]:
     """Pull one account at login time so a fresh registration works immediately.
 
-    ``account`` is what the student typed on the platform entry: a passport
-    number or the platform account email. Returns (user, error_code); error_code
-    is "not_found", "missing_passport" or "unavailable".
+    ``account`` is what the student typed: a passport number or the platform
+    account email. When a password is supplied, a record from any configured
+    environment whose hash matches it is preferred, so the same passport may
+    exist in both the development and production platforms with different
+    passwords. Returns (user, error_code); error_code is "not_found",
+    "missing_passport" or "unavailable".
     The caller commits the session after a successful upsert.
     """
     account = (account or "").strip()
     if not account:
         return None, "not_found"
     try:
-        record = fetch_student(account)
+        candidates = fetch_students(account)
     except PlatformAccountError:
         return None, "unavailable"
-    if not record:
+    if not candidates:
         return None, "not_found"
+
+    chosen = candidates[0]
+    if password:
+        for source, record in candidates:
+            record_hash = _password_hash(record)
+            if record_hash and verify_password(password, record_hash):
+                chosen = (source, record)
+                break
+
+    source, record = chosen
     passport_no = normalize_passport_no(_text(record, "passport_no", 100))
     if not passport_no:
         return None, "missing_passport"
     try:
-        upsert_platform_student(db, record)
+        upsert_platform_student(db, record, source=source)
     except ValueError:
         return None, "not_found"
     db.commit()
