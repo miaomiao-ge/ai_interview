@@ -12,6 +12,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
+from sqlalchemy import func
 
 from core.database import SessionLocal, User
 from core.passwords import hash_password as hash_password_bcrypt, verify_password
@@ -148,7 +149,12 @@ def serialize_user_identity(user: User) -> dict:
 
 
 def find_user_by_login_identifier(db, identifier: str):
-    passport_no = normalize_passport_no(identifier)
+    login_id = normalize_login_identifier(identifier)
+    if not login_id:
+        return None
+    if "@" in login_id:
+        return db.query(User).filter(func.lower(User.email) == normalize_email(login_id)).first()
+    passport_no = normalize_passport_no(login_id)
     if not passport_no:
         return None
     return db.query(User).filter(User.passport_no == passport_no).first()
