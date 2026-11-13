@@ -263,7 +263,7 @@ def sync_platform_students(limit: int | None = None, dry_run: bool = False) -> d
 
 
 def ensure_local_account_from_platform(
-    db, account: str, password: str | None = None
+    db, account: str, password: str | None = None, source_name: str | None = None
 ) -> tuple[User | None, str | None]:
     """Pull one account at login time so a fresh registration works immediately.
 
@@ -279,7 +279,7 @@ def ensure_local_account_from_platform(
     if not account:
         return None, "not_found"
     try:
-        candidates = fetch_students(account)
+        candidates = fetch_students(account, source_name)
     except PlatformAccountError:
         return None, "unavailable"
     if not candidates:

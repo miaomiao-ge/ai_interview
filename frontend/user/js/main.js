@@ -1387,6 +1387,12 @@ if (localStorage.getItem('ai_interviewer_token')) {
     startSection.style.display = 'block';
     if(logoutBtn) logoutBtn.style.display = 'block';
     updatePrepReadiness();
+} else {
+    const ssoError = sessionStorage.getItem('ai_sso_error');
+    if (ssoError) {
+        sessionStorage.removeItem('ai_sso_error');
+        if (authStatus) authStatus.innerText = '❌ ' + ssoError;
+    }
 }
 
 function logoutUser() {

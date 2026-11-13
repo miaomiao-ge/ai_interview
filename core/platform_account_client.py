@@ -51,11 +51,13 @@ def _get(path: str, params: dict, source: dict) -> dict:
     return payload
 
 
-def fetch_students(account: str) -> list[tuple[dict, dict]]:
+def fetch_students(account: str, source_name: str | None = None) -> list[tuple[dict, dict]]:
     """Return every (source, student) match across configured environment sources."""
     candidates: list[tuple[dict, dict]] = []
     errors: list[PlatformAccountError] = []
-    for source in PLATFORM_ACCOUNT_SOURCES:
+    wanted = (source_name or "").strip().lower()
+    sources = [s for s in PLATFORM_ACCOUNT_SOURCES if not wanted or _source_label(s).lower() == wanted]
+    for source in sources:
         try:
             payload = _get(
                 "/account/api/internal/students",
@@ -72,13 +74,13 @@ def fetch_students(account: str) -> list[tuple[dict, dict]]:
         for student in students:
             if isinstance(student, dict):
                 candidates.append((source, student))
-    if errors and len(errors) == len(PLATFORM_ACCOUNT_SOURCES):
+    if errors and len(errors) == len(sources):
         raise PlatformAccountError("平台账号服务暂时不可用")
     return candidates
 
 
-def fetch_student(account: str) -> tuple[dict, dict] | tuple[None, None]:
-    candidates = fetch_students(account)
+def fetch_student(account: str, source_name: str | None = None) -> tuple[dict, dict] | tuple[None, None]:
+    candidates = fetch_students(account, source_name)
     if not candidates:
         return None, None
     return candidates[0]

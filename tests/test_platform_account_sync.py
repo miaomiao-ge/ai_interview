@@ -126,7 +126,7 @@ def test_dry_run_does_not_write():
 
 def test_ensure_pulls_account_on_demand(monkeypatch):
     db = FakeDb()
-    monkeypatch.setattr(sync, "fetch_students", lambda passport_no: [(TEST_SOURCE, record())])
+    monkeypatch.setattr(sync, "fetch_students", lambda passport_no, source_name=None: [(TEST_SOURCE, record())])
     user, error = sync.ensure_local_account_from_platform(db, " P 1234567 ")
     assert error is None
     assert user is db.added
@@ -135,7 +135,7 @@ def test_ensure_pulls_account_on_demand(monkeypatch):
 
 def test_ensure_pulls_account_by_email(monkeypatch):
     db = FakeDb()
-    monkeypatch.setattr(sync, "fetch_students", lambda account: [(TEST_SOURCE, record())])
+    monkeypatch.setattr(sync, "fetch_students", lambda account, source_name=None: [(TEST_SOURCE, record())])
     user, error = sync.ensure_local_account_from_platform(db, "student@example.com")
     assert error is None
     assert user is db.added
@@ -144,20 +144,20 @@ def test_ensure_pulls_account_by_email(monkeypatch):
 
 def test_ensure_reports_missing_passport(monkeypatch):
     db = FakeDb()
-    monkeypatch.setattr(sync, "fetch_students", lambda account: [(TEST_SOURCE, record(passport_no=""))])
+    monkeypatch.setattr(sync, "fetch_students", lambda account, source_name=None: [(TEST_SOURCE, record(passport_no=""))])
     assert sync.ensure_local_account_from_platform(db, "student@example.com") == (None, "missing_passport")
 
 
 def test_ensure_reports_missing_account(monkeypatch):
     db = FakeDb()
-    monkeypatch.setattr(sync, "fetch_students", lambda passport_no: [])
+    monkeypatch.setattr(sync, "fetch_students", lambda passport_no, source_name=None: [])
     assert sync.ensure_local_account_from_platform(db, "P1") == (None, "not_found")
 
 
 def test_ensure_reports_unavailable_platform(monkeypatch):
     db = FakeDb()
 
-    def boom(passport_no):
+    def boom(passport_no, source_name=None):
         raise PlatformAccountError("down")
 
     monkeypatch.setattr(sync, "fetch_students", boom)

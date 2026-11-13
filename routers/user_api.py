@@ -26,6 +26,7 @@ from core.llm_agent import (
 )
 from core.interview_job_service import enqueue_interview_processing, get_interview_status
 from core.platform_account_sync import ensure_local_account_from_platform
+from core.interview_sso import SSOTicketError, verify_sso_ticket
 from core.tts_utils import generate_tts_audio
 from core.config import (
     SECRET_KEY,
@@ -295,6 +296,9 @@ class LoginRequest(BaseModel):
     email: str = ""
     passport_no: str = ""
     password: str
+
+class SSOLoginRequest(BaseModel):
+    ticket: str = ""
     login_source: str = ""
 
 class ResetPasswordRequest(BaseModel):
@@ -647,6 +651,20 @@ async def reset_password(req: ResetPasswordRequest):
     finally:
         db.close()
 
+def issue_access_token(user) -> tuple[str, dict]:
+    expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
+    identity = serialize_user_identity(user)
+    payload = {
+        "sub": str(user.id),
+        "user_id": user.id,
+        "email": user.email or "",
+        "username": user.real_name,
+        "passport_no": identity["passport_no"],
+        "exp": expire
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM), identity
+
+
 @router.post("/login")
 async def login(req: LoginRequest, request: Request = None):
     login_id = normalize_login_identifier(req.passport_no or req.email)
@@ -769,17 +787,7 @@ async def login(req: LoginRequest, request: Request = None):
             record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
             return {"status": "error", "code": "user_disabled", "message": "账号已停用，请联系管理员"}
 
-        expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
-        identity = serialize_user_identity(user)
-        payload = {
-            "sub": str(user.id),
-            "user_id": user.id,
-            "email": user.email or "",
-            "username": user.real_name,
-            "passport_no": identity["passport_no"],
-            "exp": expire
-        }
-        real_token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+        real_token, identity = issue_access_token(user)
         clear_rate_limit(email_limit_key)
         clear_rate_limit(ip_limit_key)
 
@@ -792,6 +800,56 @@ async def login(req: LoginRequest, request: Request = None):
         }
     finally:
         db.close()
+
+@router.post("/sso_login")
+async def sso_login(req: SSOLoginRequest, request: Request = None):
+    try:
+        payload = verify_sso_ticket(req.ticket)
+    except SSOTicketError as exc:
+        messages = {
+            "sso_not_configured": "自动登录尚未配置，请使用账号密码登录。",
+            "sso_expired": "自动登录凭证已过期，请返回留学平台重新进入。",
+            "sso_reused": "自动登录凭证已使用，请返回留学平台重新进入。",
+            "sso_invalid": "自动登录凭证无效，请返回留学平台重新进入。",
+        }
+        return {
+            "status": "error",
+            "code": exc.code,
+            "message": messages.get(exc.code, "自动登录失败，请重新登录。"),
+        }
+
+    passport_no = normalize_passport_no(payload.get("passport_no"))
+    source_name = str(payload.get("source") or "").strip().lower() or None
+    db = SessionLocal()
+    try:
+        user, platform_error = ensure_local_account_from_platform(
+            db, passport_no, source_name=source_name
+        )
+        if user is None:
+            if platform_error == "unavailable":
+                return {
+                    "status": "error",
+                    "code": "platform_account_unavailable",
+                    "message": "账号同步服务暂时不可用，请稍后重试。",
+                }
+            return {
+                "status": "error",
+                "code": "not_registered_on_platform",
+                "message": "该账号尚未在留学平台注册，请先在平台完成注册。",
+            }
+        if getattr(user, "status", "active") != "active":
+            return {"status": "error", "code": "user_disabled", "message": "账号已停用，请联系管理员"}
+        real_token, identity = issue_access_token(user)
+        return {
+            "status": "success",
+            "token": real_token,
+            "username": user.real_name,
+            "email": user.email or "",
+            "passport_no": identity["passport_no"],
+        }
+    finally:
+        db.close()
+
 
 # 接收前端传来的语言
 @router.post("/start_interview")
