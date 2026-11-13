@@ -16,9 +16,11 @@ if (ticket) {
             localStorage.setItem('ai_interviewer_token', result.token);
             sessionStorage.removeItem('ai_sso_error');
         } else {
+            localStorage.removeItem('ai_interviewer_token');
             sessionStorage.setItem('ai_sso_error', result.message || '自动登录失败，请重新登录');
         }
     } catch (error) {
+        localStorage.removeItem('ai_interviewer_token');
         sessionStorage.setItem('ai_sso_error', '自动登录失败，请检查网络后重新登录');
     }
 }
