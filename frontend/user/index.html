@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="no-referrer">
+    <style>
+        html[data-sso-pending] #loginOverlay,
+        html[data-sso-pending] #startSection { display: none !important; }
+        #ssoLoading { display: none; position: fixed; inset: 0; z-index: 9999; background: #f6fbf8; color: #1f7a4d; align-items: center; justify-content: center; font-size: 15px; }
+        html[data-sso-pending] #ssoLoading { display: flex !important; }
+    </style>
+    <script>
+        (function () {
+            if (new URLSearchParams(location.search).has('sso_ticket')) {
+                document.documentElement.setAttribute('data-sso-pending', '1');
+                setTimeout(function () { document.documentElement.removeAttribute('data-sso-pending'); }, 15000);
+            }
+        })();
+    </script>
     <title>AI面试系统</title>
     <link rel="stylesheet" href="/static/user/css/style.css?v=20261105prep5">
 
@@ -75,6 +89,7 @@
     </style>
 </head>
 <body data-lang="zh">
+    <div id="ssoLoading">正在进入面试准备…</div>
 
     <div id="loginOverlay" class="login-overlay" data-mode="login">
         <div class="login-card auth-card">
@@ -459,6 +474,6 @@
         </div>
     </div>
 
-    <script type="module" src="/static/user/js/boot.js?v=20261113sso"></script>
+    <script type="module" src="/static/user/js/boot.js?v=20261113sso2"></script>
 </body>
 </html>
