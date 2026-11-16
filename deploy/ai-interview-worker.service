@@ -1,0 +1,20 @@
+[Unit]
+Description=AI Interview evaluation and archive worker
+After=network-online.target mysql.service redis-server.service
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/ai_interview
+ExecStart=/opt/ai_interview/.venv/bin/python -m core.interview_worker --workers 4
+Environment=PYTHONUNBUFFERED=1
+# on-failure is not enough: a dropped MySQL connection can make the worker exit with code 0,
+# which systemd treats as success and leaves the evaluation queue stuck forever.
+Restart=always
+RestartSec=5
+TimeoutStopSec=180
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target

@@ -1087,16 +1087,15 @@ async def realtime_asr_ws(websocket: WebSocket, session_id: str, language: str =
                     )
                 break
 
-        final_answer = await asyncio.to_thread(asr_session.finish_text)
-        final_answer = final_answer or fallback_text
+        raw_answer = await asyncio.to_thread(asr_session.finish_text)
+        final_answer, asr_source = choose_better_asr_text(raw_answer, fallback_text, "realtime_ws_asr")
         if not final_answer:
             await websocket.send_json({"type": "error", **asr_empty_response(language)})
             await websocket.close()
             return
 
         if ASR_DEBUG_LOG:
-            source = "realtime_ws_asr" if asr_session.text() else "fallback_text"
-            print(f"[ASR][{session_id[:8]}][answer] source={source} text={final_answer}", flush=True)
+            print(f"[ASR][{session_id[:8]}][answer] source={asr_source} text={final_answer}", flush=True)
 
         if finish_mode == "asr_only":
             await websocket.send_json(
@@ -1104,7 +1103,7 @@ async def realtime_asr_ws(websocket: WebSocket, session_id: str, language: str =
                     "type": "asr_done",
                     "status": "success",
                     "recognized_text": final_answer,
-                    "asr_source": "realtime_ws_asr" if asr_session.text() else "fallback_text",
+                    "asr_source": asr_source,
                 }
             )
             await websocket.close()
@@ -1139,7 +1138,7 @@ async def realtime_asr_ws(websocket: WebSocket, session_id: str, language: str =
                 "audio_url": audio_url,
                 "is_end": reply_data["is_end"],
                 "recognized_text": final_answer,
-                "asr_source": "realtime_ws_asr" if asr_session.text() else "fallback_text",
+                "asr_source": asr_source,
             }
         )
         await websocket.close()

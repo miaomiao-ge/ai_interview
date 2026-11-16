@@ -1864,11 +1864,21 @@ async function finishAndArchiveInterview() {
     showProcessModal('uploading');
 
     try {
-        const uploadResult = await mediaManager.stopAndUpload(pendingSessionId);
-        if (!uploadResult || uploadResult.status !== "success") {
-            throw new Error(uploadResult?.message || getLangText("录制上传 OSS 失败", "Recording upload to OSS failed"));
+        let uploadResult = null;
+        try {
+            uploadResult = await mediaManager.stopAndUpload(pendingSessionId);
+        } catch (uploadError) {
+            console.warn("⚠️ 录制上传异常，继续提交面试评估:", uploadError);
         }
-        UI.setStatus(getLangText("● 录制上传完成，后台处理中...", "● Recording uploaded. Processing in background..."), "orange");
+        if (!uploadResult || uploadResult.status !== "success") {
+            // 录制上传失败不能阻断评估：报告仍需生成，音视频归档交由后台补偿
+            UI.setStatus(
+                getLangText("⚠️ 录制上传失败，仍会提交面试评估", "⚠️ Recording upload failed; submitting for evaluation anyway"),
+                "orange"
+            );
+        } else {
+            UI.setStatus(getLangText("● 录制上传完成，后台处理中...", "● Recording uploaded. Processing in background..."), "orange");
+        }
         updateProcessModal('processing');
         const submitResult = await endInterviewAPI(pendingSessionId);
         if (submitResult.status === "error") {

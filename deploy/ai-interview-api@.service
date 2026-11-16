@@ -1,0 +1,21 @@
+[Unit]
+Description=AI Interview API instance on port %i
+After=network-online.target mysql.service redis-server.service
+Wants=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/ai_interview
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=WORKER_NODE_ID=api-%i
+Environment=UVICORN_RELOAD=0
+ExecStart=/opt/ai_interview/.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port %i --no-access-log
+Restart=always
+RestartSec=3
+TimeoutStopSec=30
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
