@@ -4,6 +4,7 @@ The platform owns the password for students who registered there. Xidian-sourced
 accounts keep their own initial password until the same passport registers on the
 platform, at which point the platform becomes authoritative.
 """
+import hashlib
 import re
 from dataclasses import asdict, dataclass
 from datetime import datetime
@@ -67,16 +68,59 @@ def _parse_datetime(value):
         return None
 
 
-def _fill_face(db, user, record: dict, now: datetime, dry_run: bool = False, source: dict | None = None) -> bool:
-    if dry_run or (getattr(user, "face_image_oss_key", "") or "").strip():
+def _source_matches(current: str, incoming: str) -> bool:
+    current = (current or "").strip().lower()
+    incoming = (incoming or "").strip().lower()
+    if not current or not incoming:
         return False
+    if incoming == "profile":
+        return current == "platform_profile"
+    if incoming == "application":
+        return current == "platform_application"
+    if incoming == "official":
+        return "official" in current
+    return False
+
+
+def _fill_face(db, user, record: dict, now: datetime, dry_run: bool = False, source: dict | None = None) -> bool:
+    if dry_run:
+        return False
+    version = _text(record, "photo_version", 255)
+    stored_version = (getattr(user, "platform_photo_version", "") or "").strip()[:255]
+    existing_key = (getattr(user, "face_image_oss_key", "") or "").strip()
+    if existing_key:
+        if not version:
+            return False
+        if stored_version:
+            if stored_version == version:
+                return False
+        else:
+            # First sync after photo versioning shipped: adopt the current platform
+            # version without re-downloading, unless the platform portrait is newer
+            # than the photo this AI account already uses or its source changed.
+            incoming_updated = _parse_datetime(record.get("photo_updated_at"))
+            applied_at = getattr(user, "official_photo_synced_at", None) or getattr(user, "face_enrolled_at", None)
+            source_changed = (
+                _text(record, "photo_source", 50)
+                and (getattr(user, "face_image_source", "") or "").strip()
+                and not _source_matches(
+                    getattr(user, "face_image_source", "") or "",
+                    _text(record, "photo_source", 50),
+                )
+            )
+            if not (source_changed or (incoming_updated and applied_at and incoming_updated > applied_at)):
+                user.platform_photo_version = version
+                db.flush()
+                return False
+
     key = _text(record, "face_image_oss_key", 255)
-    source = _text(record, "face_image_source", 50)
+    image_source = _text(record, "face_image_source", 50)
     if key:
         user.face_image_oss_key = key
-        user.face_image_source = source or "platform_official"
+        user.face_image_source = image_source or "platform_official"
         user.face_enrolled_at = _parse_datetime(record.get("face_enrolled_at")) or now
         user.official_photo_synced_at = _parse_datetime(record.get("official_photo_synced_at")) or now
+        user.platform_photo_version = version
         db.flush()
         return True
 
@@ -95,11 +139,13 @@ def _fill_face(db, user, record: dict, now: datetime, dry_run: bool = False, sou
         user.face_image_source = str(photo.get("source") or "platform_official").strip() or "platform_official"
         user.face_enrolled_at = _parse_datetime(photo.get("enrolled_at")) or now
         user.official_photo_synced_at = _parse_datetime(photo.get("synced_at")) or now
+        user.platform_photo_version = version
         db.flush()
         return True
     if photo.get("kind") == "bytes" and photo.get("content"):
         extension = str(photo.get("extension") or "jpg").lower()
-        oss_key = f"face/platform/{passport_no.lower()}.{extension}"
+        suffix = hashlib.sha1((version or str(now.timestamp())).encode("utf-8")).hexdigest()[:10]
+        oss_key = f"face/platform/{passport_no.lower()}-{suffix}.{extension}"
         try:
             upload_bytes_to_oss(
                 photo["content"],
@@ -112,9 +158,10 @@ def _fill_face(db, user, record: dict, now: datetime, dry_run: bool = False, sou
         except Exception:
             return False
         user.face_image_oss_key = oss_key
-        user.face_image_source = "platform_profile"
+        user.face_image_source = "platform_application" if _text(record, "photo_source", 50) == "application" else "platform_profile"
         user.face_enrolled_at = now
         user.official_photo_synced_at = now
+        user.platform_photo_version = version
         db.flush()
         return True
     return False

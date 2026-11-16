@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from core import platform_account_sync as sync
 from core.database import User
 from core.platform_account_client import PlatformAccountError
@@ -306,6 +308,154 @@ def test_fetches_minio_photo_and_uploads_to_ai_oss(monkeypatch):
         db,
         record(source="platform_local", has_photo=True),
     )
-    assert user.face_image_oss_key == "face/platform/p1234567.jpg"
+    assert user.face_image_oss_key.startswith("face/platform/p1234567-")
+    assert user.face_image_oss_key.endswith(".jpg")
     assert user.face_image_source == "platform_profile"
     assert calls and calls[0][0] == b"image-bytes"
+
+
+def test_photo_version_change_refreshes_existing_face(monkeypatch):
+    user = User(
+        email="student@example.com",
+        passport_no="P1234567",
+        password_hash="$2b$12$platform-hash",
+        auth_source="platform",
+        status="active",
+        face_image_oss_key="face/platform/p1234567-old.jpg",
+        face_image_source="platform_profile",
+        platform_photo_version="profile:1:aaa",
+    )
+    db = FakeDb(user)
+    uploaded = []
+    monkeypatch.setattr(
+        sync,
+        "fetch_student_photo",
+        lambda account, source=None: {"kind": "bytes", "content": b"new-photo", "extension": "jpg"},
+    )
+    monkeypatch.setattr(sync, "upload_bytes_to_oss", lambda content, key, overwrite, **kwargs: uploaded.append(key))
+
+    sync.upsert_platform_student(
+        db,
+        record(source="platform_local", has_photo=True, photo_version="profile:2:bbb"),
+    )
+
+    assert user.face_image_oss_key != "face/platform/p1234567-old.jpg"
+    assert user.face_image_oss_key.startswith("face/platform/p1234567-")
+    assert user.platform_photo_version == "profile:2:bbb"
+    assert uploaded == [user.face_image_oss_key]
+
+
+def test_same_photo_version_keeps_existing_face(monkeypatch):
+    user = User(
+        email="student@example.com",
+        passport_no="P1234567",
+        password_hash="$2b$12$platform-hash",
+        auth_source="platform",
+        status="active",
+        face_image_oss_key="face/platform/p1234567-current.jpg",
+        platform_photo_version="profile:2:bbb",
+    )
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError("photo must not be fetched when its version is unchanged")
+
+    monkeypatch.setattr(sync, "fetch_student_photo", unexpected)
+    sync.upsert_platform_student(
+        FakeDb(user),
+        record(source="platform_local", has_photo=True, photo_version="profile:2:bbb"),
+    )
+    assert user.face_image_oss_key == "face/platform/p1234567-current.jpg"
+
+
+def test_missing_stored_photo_version_adopts_current_without_refresh(monkeypatch):
+    user = User(
+        email="student@example.com",
+        passport_no="P1234567",
+        password_hash="$2b$12$platform-hash",
+        auth_source="platform",
+        status="active",
+        face_image_oss_key="face/platform/p1234567-existing.jpg",
+        platform_photo_version="",
+    )
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError("existing face must not be re-downloaded during version backfill")
+
+    monkeypatch.setattr(sync, "fetch_student_photo", unexpected)
+    sync.upsert_platform_student(
+        FakeDb(user),
+        record(source="platform_local", has_photo=True, photo_version="profile:3:ccc"),
+    )
+    assert user.face_image_oss_key == "face/platform/p1234567-existing.jpg"
+    assert user.platform_photo_version == "profile:3:ccc"
+
+
+def test_newer_platform_photo_refreshes_when_stored_version_is_missing(monkeypatch):
+    user = User(
+        email="student@example.com",
+        passport_no="P1234567",
+        password_hash="$2b$12$platform-hash",
+        auth_source="platform",
+        status="active",
+        face_image_oss_key="face/platform/p1234567-old.jpg",
+        face_enrolled_at=datetime(2026, 11, 1, 9, 0),
+        platform_photo_version="",
+    )
+    uploaded = []
+    monkeypatch.setattr(
+        sync,
+        "fetch_student_photo",
+        lambda account, source=None: {"kind": "bytes", "content": b"newer-photo", "extension": "jpg"},
+    )
+    monkeypatch.setattr(sync, "upload_bytes_to_oss", lambda content, key, overwrite, **kwargs: uploaded.append(key))
+
+    sync.upsert_platform_student(
+        FakeDb(user),
+        record(
+            source="platform_local",
+            has_photo=True,
+            photo_version="profile:2:bbb",
+            photo_updated_at="2026-11-15T10:00:00",
+        ),
+    )
+
+    assert user.face_image_oss_key != "face/platform/p1234567-old.jpg"
+    assert user.platform_photo_version == "profile:2:bbb"
+    assert uploaded == [user.face_image_oss_key]
+
+
+def test_profile_photo_overrides_official_face_even_when_older(monkeypatch):
+    user = User(
+        email="student@example.com",
+        passport_no="P1234567",
+        password_hash="$2b$12$platform-hash",
+        auth_source="xidian",
+        status="active",
+        face_image_oss_key="face/official/P1234567.jpg",
+        face_image_source="xidian_official",
+        face_enrolled_at=datetime(2026, 11, 15, 9, 0),
+        platform_photo_version="",
+    )
+    uploaded = []
+    monkeypatch.setattr(
+        sync,
+        "fetch_student_photo",
+        lambda account, source=None: {"kind": "bytes", "content": b"profile-photo", "extension": "jpg"},
+    )
+    monkeypatch.setattr(sync, "upload_bytes_to_oss", lambda content, key, overwrite, **kwargs: uploaded.append(key))
+
+    sync.upsert_platform_student(
+        FakeDb(user),
+        record(
+            source="platform_local",
+            has_photo=True,
+            photo_source="profile",
+            photo_version="profile:9:zzz",
+            photo_updated_at="2026-11-01T10:00:00",
+        ),
+    )
+
+    assert user.face_image_oss_key.startswith("face/platform/p1234567-")
+    assert user.face_image_source == "platform_profile"
+    assert user.platform_photo_version == "profile:9:zzz"
+    assert uploaded == [user.face_image_oss_key]

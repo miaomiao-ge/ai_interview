@@ -54,6 +54,7 @@ class User(Base):
     auth_source = Column(String(20), nullable=False, default="xidian", comment="登录密码来源：xidian / platform")
     platform_user_id = Column(Integer, nullable=True, comment="外事留学平台 users.id")
     platform_synced_at = Column(DateTime, nullable=True, comment="平台账号最近同步时间")
+    platform_photo_version = Column(String(255), default="", comment="平台证件照版本，用于检测更换")
     created_at = Column(DateTime, default=datetime.now, comment="注册时间")
 
 
@@ -371,6 +372,7 @@ def ensure_user_platform_schema(db):
         ("auth_source", "ALTER TABLE users ADD COLUMN auth_source VARCHAR(20) NOT NULL DEFAULT 'xidian'"),
         ("platform_user_id", "ALTER TABLE users ADD COLUMN platform_user_id INT NULL"),
         ("platform_synced_at", "ALTER TABLE users ADD COLUMN platform_synced_at DATETIME NULL"),
+        ("platform_photo_version", "ALTER TABLE users ADD COLUMN platform_photo_version VARCHAR(255) DEFAULT ''"),
     ]
     altered = False
     for column_name, sql_statement in schema_changes:
