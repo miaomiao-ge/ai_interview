@@ -530,6 +530,9 @@ const prepLogoutBtn = document.getElementById('prepLogoutBtn');
 const logoutBtn = document.getElementById('logoutBtn');
 const reselectLangBtn = document.getElementById('reselectLangBtn');
 const initInterviewBtn = document.getElementById('initInterviewBtn');
+const startAssessmentBtn = document.getElementById('startAssessmentBtn');
+const assessmentStateText = document.getElementById('assessmentStateText');
+let assessmentStatus = 'NONE';
 const btnStart = document.getElementById('startBtn');
 const btnFinishAnswer = document.getElementById('finishAnswerBtn');
 const aiSpeakingBadge = document.getElementById('aiSpeakingBadge');
@@ -1721,8 +1724,37 @@ function startProctoringLoop() {
     proctoringLoop.start();
 }
 
+async function refreshAssessmentStatus() {
+    try {
+        const token = localStorage.getItem('ai_interviewer_token') || '';
+        if (!token) return;
+        const response = await fetch(`${mediaManager.getAppBasePath()}/api/user/assessment/result`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        assessmentStatus = data.assessment_status || 'NONE';
+    } catch (error) {
+        console.warn('[assessment] status refresh failed', error);
+        assessmentStatus = 'NONE';
+    }
+    if (assessmentStateText) {
+        assessmentStateText.textContent = assessmentStatus === 'submitted'
+            ? getLangText('心理测评已完成', 'Wellbeing survey completed')
+            : getLangText('心理测评未完成，完成后才能开始面试', 'Complete the wellbeing survey before starting');
+    }
+    if (startAssessmentBtn) startAssessmentBtn.hidden = assessmentStatus === 'submitted';
+}
+
+refreshAssessmentStatus();
+
 initInterviewBtn.onclick = async () => {
     if (!(await ensurePrepReadyBeforeStart())) {
+        return;
+    }
+    await refreshAssessmentStatus();
+    if (assessmentStatus !== 'submitted') {
+        UI.setStatus(getLangText('请先完成心理测评', 'Please finish the wellbeing survey first'), 'orange');
+        window.location.href = `${mediaManager.getAppBasePath()}/assessment/`;
         return;
     }
     const lang = setInterviewLanguage(document.getElementById('interviewLang').value);
@@ -1763,8 +1795,17 @@ initInterviewBtn.onclick = async () => {
 
             if (!live2dModel) initLive2D();
             hideProcessModal(450);
-        } else throw new Error(result.message);
+        } else {
+            const startError = new Error(result.message || '开始面试失败');
+            startError.code = result.code || '';
+            throw startError;
+        }
     } catch (err) {
+        if (err && err.code === 'assessment_required') {
+            assessmentStatus = 'NONE';
+            window.location.href = `${mediaManager.getAppBasePath()}/assessment/`;
+            return;
+        }
         updateProcessModal('error');
         hideProcessModal(900);
         document.getElementById('initStatus').innerText = "❌ " + err.message;

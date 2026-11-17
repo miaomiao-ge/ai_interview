@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>心理测评 / Wellbeing Survey</title>
+  <link rel="stylesheet" href="/static/user/css/assessment.css?v=20261117a">
+</head>
+<body>
+  <main class="assess-shell">
+    <header class="assess-head">
+      <h1>心理测评 <small>Wellbeing Survey</small></h1>
+      <p class="assess-sub">本测评共 53 题，约需 8-10 分钟。结果仅用于了解你的适应情况，请按最近一周的真实感受作答。</p>
+    </header>
+
+    <section id="assessConsent" class="assess-card">
+      <p>我已知悉本测评的用途，并同意提交作答结果。</p>
+      <label class="assess-consent"><input type="checkbox" id="consentBox"> 我同意</label>
+      <button id="startBtn" class="assess-btn" disabled>开始作答</button>
+    </section>
+
+    <section id="assessBody" class="assess-card" hidden>
+      <div class="assess-progress">
+        <span id="assessProgressText">0 / 53</span>
+        <div class="assess-bar"><i id="assessBar"></i></div>
+      </div>
+      <div id="assessItems"></div>
+      <div class="assess-actions">
+        <button id="prevBtn" class="assess-btn ghost" type="button">上一页</button>
+        <button id="nextBtn" class="assess-btn" type="button">下一页</button>
+        <button id="submitBtn" class="assess-btn" type="button" hidden>提交测评</button>
+      </div>
+      <p id="assessStatus" class="assess-status"></p>
+    </section>
+  </main>
+  <script type="module" src="/static/user/js/assessment.js?v=20261117a"></script>
+</body>
+</html>

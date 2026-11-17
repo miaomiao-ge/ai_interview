@@ -1,0 +1,48 @@
+:root { color-scheme: light; }
+
+body {
+  margin: 0;
+  font-family: system-ui, "Microsoft YaHei", sans-serif;
+  background: #f5f7fb;
+  color: #1f2733;
+}
+
+.assess-shell { max-width: 880px; margin: 0 auto; padding: 32px 20px 64px; }
+.assess-head h1 { font-size: 24px; margin: 0 0 8px; }
+.assess-head small { font-size: 14px; color: #7a869a; font-weight: 400; }
+.assess-sub { color: #5a6779; line-height: 1.7; margin: 0 0 24px; }
+
+.assess-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 6px 24px rgba(24, 40, 72, .06);
+}
+
+.assess-consent { display: flex; gap: 8px; align-items: center; margin: 16px 0; }
+
+.assess-btn {
+  background: #1f6feb;
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.assess-btn:disabled { opacity: .5; cursor: not-allowed; }
+.assess-btn.ghost { background: #eef2f8; color: #1f2733; }
+
+.assess-progress { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; color: #5a6779; font-size: 14px; }
+.assess-bar { flex: 1; height: 6px; background: #e8edf5; border-radius: 3px; overflow: hidden; }
+.assess-bar i { display: block; height: 100%; width: 0; background: #1f6feb; transition: width .2s; }
+
+.assess-item { padding: 14px 0; border-bottom: 1px solid #f0f3f8; }
+.assess-item h3 { font-size: 15px; font-weight: 500; margin: 0 0 10px; }
+.assess-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.assess-options label { border: 1px solid #dbe3ee; border-radius: 999px; padding: 6px 14px; font-size: 14px; cursor: pointer; position: relative; }
+.assess-options input { position: absolute; opacity: 0; }
+.assess-options label:has(input:checked) { border-color: #1f6feb; background: #eaf1ff; color: #1f6feb; }
+
+.assess-actions { display: flex; gap: 12px; margin-top: 20px; }
+.assess-status { color: #5a6779; font-size: 14px; min-height: 20px; }

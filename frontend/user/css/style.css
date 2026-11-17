@@ -11060,3 +11060,6 @@ body[data-lang="en"] #interviewSection.room-reference #aiFirstQuestion {
         padding-inline: 12px;
     }
 }
+
+.prep-assessment-state { font-size: 13px; color: #7a869a; margin-top: 8px; }
+.prep-secondary { background: #eef2f8; color: #1f2733; }
