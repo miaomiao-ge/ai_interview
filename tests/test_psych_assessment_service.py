@@ -78,3 +78,21 @@ def test_resubmit_creates_new_attempt(db, user):
 def test_submit_rejects_incomplete_answers(db, user):
     with pytest.raises(ValueError):
         submit_assessment(db, user, {1: 1}, "v1")
+
+
+def test_repeated_draft_saves_update_single_row(db, user):
+    first = save_draft(db, user, {1: 2}, "v1")
+    second = save_draft(db, user, {1: 3, 2: 1}, "v1")
+
+    assert second.id == first.id
+    assert second.attempt_no == 1
+    assert second.answers_json == '{"1": 3, "2": 1}'
+    assert db.query(type(first)).filter_by(user_id=user.id).count() == 1
+
+
+def test_submit_after_draft_keeps_attempt_numbering(db, user):
+    save_draft(db, user, {1: 2}, "v1")
+    submitted = submit_assessment(db, user, _answers(0), "v1")
+
+    assert submitted.attempt_no == 1
+    assert submitted.status == "submitted"

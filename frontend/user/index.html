@@ -42,7 +42,11 @@
         }
         .practice-entry-copy { line-height: 1.15; }
         body[data-lang="zh"] #practiceInterviewLink .practice-en,
-        body[data-lang="en"] #practiceInterviewLink .practice-zh { display: none; }
+        body[data-lang="en"] #practiceInterviewLink .practice-zh,
+        body[data-lang="zh"] #startAssessmentBtn .practice-en,
+        body[data-lang="en"] #startAssessmentBtn .practice-zh,
+        body[data-lang="zh"] #requestManualInterviewBtn .practice-en,
+        body[data-lang="en"] #requestManualInterviewBtn .practice-zh { display: none; }
         @media (max-width: 600px) {
             #startSection .prep-entry-actions { gap: 10px; }
             #startSection .prep-entry-actions .prep-primary {
@@ -350,7 +354,7 @@
                         <span class="prep-secondary-copy"><span class="practice-zh">先完成心理测评</span><span class="practice-en">Wellbeing Survey First</span></span>
                     </a>
                     <button id="requestManualInterviewBtn" class="btn btn-large prep-secondary" type="button">
-                        <span class="prep-secondary-copy"><span class="practice-zh">申请人工面试（腾讯会议）</span><span class="practice-en">Request a Live Interview (Tencent Meeting)</span></span>
+                        <span class="prep-secondary-copy"><span class="practice-zh">申请人工面试</span><span class="practice-en">Request a Live Interview</span></span>
                     </button>
                     </div>
                     <div id="assessmentStateText" class="prep-assessment-state"></div>
@@ -493,7 +497,7 @@
     <script type="module" src="/static/user/js/boot.js?v=20261117fix2"></script>
     <div id="manualInterviewDialog" class="mi-dialog" hidden>
         <div class="mi-dialog-card">
-            <h3>申请人工面试（腾讯会议）</h3>
+            <h3>申请人工面试</h3>
             <p>如因设备、网络或身体原因无法完成 AI 面试，可以申请人工面试。老师会在 1 个工作日内与你联系并安排腾讯会议。</p>
             <label>申请原因
                 <select id="manualReasonSelect">

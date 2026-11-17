@@ -18,7 +18,7 @@ def latest_for_user(db, user_id: int) -> Optional[PsychAssessment]:
 def _next_attempt(db, user_id: int) -> int:
     latest = (
         db.query(PsychAssessment)
-        .filter(PsychAssessment.user_id == user_id)
+        .filter(PsychAssessment.user_id == user_id, PsychAssessment.status != "draft")
         .order_by(PsychAssessment.attempt_no.desc())
         .first()
     )
@@ -44,8 +44,26 @@ def _base_record(db, user: User, status: str, consent_version: str) -> PsychAsse
 
 
 def save_draft(db, user: User, answers: dict, consent_version: str) -> PsychAssessment:
+    payload = json.dumps({str(k): int(v) for k, v in (answers or {}).items()})
+    existing = (
+        db.query(PsychAssessment)
+        .filter(
+            PsychAssessment.user_id == user.id,
+            PsychAssessment.status == "draft",
+        )
+        .order_by(PsychAssessment.attempt_no.desc())
+        .first()
+    )
+    if existing:
+        existing.answers_json = payload
+        if consent_version:
+            existing.consent_version = consent_version
+        db.commit()
+        db.refresh(existing)
+        return existing
+
     record = _base_record(db, user, "draft", consent_version)
-    record.answers_json = json.dumps({str(k): int(v) for k, v in (answers or {}).items()})
+    record.answers_json = payload
     db.add(record)
     db.commit()
     db.refresh(record)
