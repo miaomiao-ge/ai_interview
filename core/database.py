@@ -53,6 +53,7 @@ class User(Base):
     imported_at = Column(DateTime, nullable=True)
     auth_source = Column(String(20), nullable=False, default="xidian", comment="登录密码来源：xidian / platform")
     platform_user_id = Column(Integer, nullable=True, comment="外事留学平台 users.id")
+    platform_account = Column(String(100), index=True, nullable=True, comment="外事留学平台登录账号")
     platform_synced_at = Column(DateTime, nullable=True, comment="平台账号最近同步时间")
     platform_photo_version = Column(String(255), default="", comment="平台证件照版本，用于检测更换")
     created_at = Column(DateTime, default=datetime.now, comment="注册时间")
@@ -279,6 +280,7 @@ def ensure_user_face_schema(db):
         ("remark", "ALTER TABLE users ADD COLUMN remark TEXT"),
         ("source", "ALTER TABLE users ADD COLUMN source VARCHAR(50) DEFAULT 'self_register'"),
         ("imported_at", "ALTER TABLE users ADD COLUMN imported_at DATETIME NULL"),
+        ("platform_account", "ALTER TABLE users ADD COLUMN platform_account VARCHAR(100) NULL"),
     ]
     altered = False
     for column_name, sql_statement in schema_changes:
@@ -303,6 +305,9 @@ def ensure_user_face_schema(db):
         _drop_unique_indexes_for_column(db, "users", "email")
         if not _has_index(db, "users", "email"):
             db.execute(text("ALTER TABLE users ADD INDEX idx_users_email (email)"))
+
+    if "platform_account" in current_columns and not _has_index(db, "users", "platform_account"):
+        db.execute(text("ALTER TABLE users ADD INDEX idx_users_platform_account (platform_account)"))
 
     if "passport_no" in current_columns and "candidate_no" in current_columns:
         db.execute(text("UPDATE users SET passport_no=candidate_no WHERE (passport_no IS NULL OR passport_no='') AND candidate_no IS NOT NULL AND candidate_no<>''"))

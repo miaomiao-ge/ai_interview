@@ -66,6 +66,7 @@ def test_serialize_result_row_includes_student_and_interview_result():
         xidian_recommend_flag="1",
         passport_no="AQ1234567",
         email="student@example.com",
+        platform_account="TESTSTU3016",
     )
     record = SimpleNamespace(
         id=12,
@@ -111,6 +112,7 @@ def test_serialize_result_row_includes_student_and_interview_result():
     assert payload["givenName"] == "DU"
     assert payload["id"] == "APP-1"
     assert payload["applicationNo"] == "20260600003"
+    assert payload["account"] == "TESTSTU3016"
     assert payload["flag"] == "1"
     assert payload["interviewResult"]["totalScore"] == 88
     assert payload["interviewResult"]["dimensionScores"][0]["score"] == 18

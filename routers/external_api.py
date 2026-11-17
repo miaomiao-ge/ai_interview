@@ -200,6 +200,7 @@ def serialize_result_row(user: User, record: InterviewRecord) -> dict:
         "flag": getattr(user, "xidian_recommend_flag", "") or "",
         "passportNumber": getattr(user, "passport_no", "") or "",
         "email": getattr(user, "email", "") or "",
+        "account": getattr(user, "platform_account", "") or "",
         "interviewResult": interview_result_payload(record),
     }
 
@@ -213,6 +214,7 @@ def collect_interview_result_rows(
     application_ids: list[str] | None = None,
     application_nos: list[str] | None = None,
     passport_no: str = "",
+    account: str = "",
     include_incomplete: bool = False,
     latest_only: bool = True,
     max_rows: int = 5000,
@@ -246,6 +248,8 @@ def collect_interview_result_rows(
         query = query.filter(User.xidian_application_no.in_(application_nos))
     if passport_no:
         query = query.filter(User.passport_no == normalize_passport_no(passport_no))
+    if account:
+        query = query.filter(User.platform_account == account.strip())
     if not include_incomplete:
         query = query.filter(InterviewRecord.evaluate_status == "success")
 
@@ -329,6 +333,7 @@ async def get_interview_results(
     application_id: str = Query("", alias="id"),
     application_no: str = Query("", alias="applicationNo"),
     passport_no: str = Query("", alias="passportNo"),
+    account: str = Query("", alias="account"),
     include_incomplete: bool = Query(False, alias="includeIncomplete"),
     latest_only: bool = Query(True, alias="latestOnly"),
     limit: int = Query(100, ge=1, le=1000),
@@ -344,6 +349,7 @@ async def get_interview_results(
             application_id=application_id,
             application_no=application_no,
             passport_no=passport_no,
+            account=account,
             include_incomplete=include_incomplete,
             latest_only=latest_only,
             max_rows=limit if not latest_only else min(limit * 5, 1000),

@@ -174,7 +174,8 @@ def _differs(user: User, record: dict) -> bool:
         (user.password_hash or "") != _password_hash(record)
         or (user.status or "active") != str(record.get("status") or "active")
         or (user.real_name or "") != _text(record, "real_name", 100)
-        or getattr(user, "platform_user_id", None) != _platform_id(record)
+        or (getattr(user, "platform_user_id", None) != _platform_id(record))
+        or (getattr(user, "platform_account", None) or "") != _text(record, "account", 100)
     )
 
 
@@ -189,6 +190,7 @@ def upsert_platform_student(db, record: dict, source: dict | None = None, dry_ru
     status_value = str(record.get("status") or "active").strip() or "active"
     real_name = _text(record, "real_name", 100)
     platform_id = _platform_id(record)
+    platform_account = _text(record, "account", 100)
     platform_source = str(record.get("source") or "").strip()
     if platform_source in {"qa", "manual_test", "local_manual_test"}:
         return "skipped"
@@ -212,6 +214,7 @@ def upsert_platform_student(db, record: dict, source: dict | None = None, dry_ru
                 source="xidian_api" if is_roster else "platform",
                 auth_source="xidian" if is_roster else "platform",
                 platform_user_id=platform_id,
+                platform_account=platform_account or None,
                 platform_synced_at=now,
             )
             db.add(user)
@@ -276,6 +279,8 @@ def upsert_platform_student(db, record: dict, source: dict | None = None, dry_ru
     user.real_name = real_name or user.real_name
     user.status = status_value
     user.platform_user_id = platform_id
+    if platform_account:
+        user.platform_account = platform_account
     user.platform_synced_at = now
     db.flush()
     return action

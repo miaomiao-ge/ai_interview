@@ -865,6 +865,10 @@ async def sso_login(req: SSOLoginRequest, request: Request = None):
             }
         if getattr(user, "status", "active") != "active":
             return {"status": "error", "code": "user_disabled", "message": "账号已停用，请联系管理员"}
+        # Keep the platform login account for account-keyed result lookups.
+        if ticket_account and getattr(user, "platform_account", None) != ticket_account:
+            user.platform_account = ticket_account
+            db.commit()
         real_token, identity = issue_access_token(user)
         return {
             "status": "success",
