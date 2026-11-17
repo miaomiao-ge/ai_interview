@@ -698,6 +698,9 @@ async def login(req: LoginRequest, request: Request = None):
         login_source = (getattr(req, "login_source", "") or "").strip().lower()
         if login_source not in {"", "xidian", "platform"}:
             login_source = ""
+        # 账号体系统一以留学平台为准：凭平台账号+密码登录，本地不再走护照号入口。
+        if PLATFORM_ACCOUNT_SOURCES:
+            login_source = "platform"
 
         user = find_user_by_login_identifier(db, login_id)
 
@@ -729,7 +732,7 @@ async def login(req: LoginRequest, request: Request = None):
                 return {
                     "status": "error",
                     "code": "not_registered_on_platform",
-                    "message": "该账号尚未在留学平台注册，请使用西电面试账号入口登录。",
+                    "message": "该账号尚未在留学平台注册，请先在平台完成注册。",
                 }
             if (getattr(user, "auth_source", "xidian") or "xidian") == "xidian":
                 return {
@@ -740,13 +743,13 @@ async def login(req: LoginRequest, request: Request = None):
             if not verify_password(req.password, user.password_hash):
                 record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
                 record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
-                return {"status": "error", "message": "护照号或密码错误！"}
+                return {"status": "error", "message": "账号或密码错误！"}
 
         elif login_source == "xidian":
             if user is None:
                 record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
                 record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
-                return {"status": "error", "message": "护照号或密码错误！"}
+                return {"status": "error", "message": "账号或密码错误！"}
             if (getattr(user, "auth_source", "xidian") or "xidian") == "platform":
                 return {
                     "status": "error",
@@ -756,7 +759,7 @@ async def login(req: LoginRequest, request: Request = None):
             if not verify_password(req.password, user.password_hash):
                 record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
                 record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
-                return {"status": "error", "message": "护照号或密码错误！"}
+                return {"status": "error", "message": "账号或密码错误！"}
 
         else:
             # Compatibility path for callers that do not send a login source.
@@ -778,7 +781,7 @@ async def login(req: LoginRequest, request: Request = None):
                         }
                     record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
                     record_login_failure(ip_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
-                    return {"status": "error", "message": "护照号或密码错误！"}
+                    return {"status": "error", "message": "账号或密码错误！"}
 
             if not verify_password(req.password, user.password_hash):
                 auth_source = getattr(user, "auth_source", "xidian") or "xidian"
@@ -796,7 +799,7 @@ async def login(req: LoginRequest, request: Request = None):
                             "code": "platform_account_unavailable",
                             "message": "登录服务暂时不可用，请稍后重试。",
                         }
-                    return {"status": "error", "message": "护照号或密码错误！"}
+                    return {"status": "error", "message": "账号或密码错误！"}
 
         if getattr(user, "status", "active") != "active":
             record_login_failure(email_limit_key, LOGIN_RATE_LIMIT_WINDOW_SECONDS)
