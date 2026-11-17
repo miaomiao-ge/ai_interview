@@ -27,6 +27,7 @@ from core.llm_agent import (
 from core.interview_job_service import enqueue_interview_processing, get_interview_status
 from core.platform_account_sync import ensure_local_account_from_platform
 from core.interview_sso import SSOTicketError, verify_sso_ticket
+from core.psych_assessment_service import has_submitted as has_submitted_assessment
 from core.tts_utils import generate_tts_audio
 from core.config import (
     SECRET_KEY,
@@ -92,6 +93,14 @@ async def run_tts_task(func, *args):
 async def run_asr_file_task(func, *args):
     async with _asr_file_semaphore:
         return await asyncio.to_thread(func, *args)
+
+
+def assessment_required_response() -> dict:
+    return {
+        "status": "error",
+        "code": "assessment_required",
+        "message": "请先完成心理测评再开始面试",
+    }
 
 
 def capacity_error_response(kind: str, active_count: int, limit: int) -> dict:
@@ -868,8 +877,12 @@ async def start_interview(req: StartInterviewRequest, request: Request):
         if getattr(user, "status", "active") != "active":
             return {"status": "error", "code": "user_disabled", "message": "账号已停用，请联系管理员"}
         has_face_image = bool(user.face_image_oss_key)
+        assessment_done = has_submitted_assessment(db, user.id)
     finally:
         db.close()
+
+    if not assessment_done:
+        return assessment_required_response()
 
     user_subject = identity["subject"]
     face_verified = get_face_verified(user_subject)

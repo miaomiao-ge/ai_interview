@@ -790,5 +790,59 @@ def database_ready() -> bool:
         return False
 
 
+class PsychAssessment(Base):
+    __tablename__ = "psych_assessments"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, index=True, nullable=False, comment="users.id")
+    user_email = Column(String(100), index=True, nullable=False, default="")
+    instrument = Column(String(20), nullable=False, default="BSI-53")
+    version = Column(String(10), nullable=False, default="1")
+    attempt_no = Column(Integer, nullable=False, default=1)
+    status = Column(String(20), nullable=False, default="draft", comment="draft/submitted/skipped")
+    answers_json = Column(Text)
+    dimension_json = Column(Text)
+    gsi = Column(Float)
+    pst = Column(Integer)
+    psdi = Column(Float)
+    risk_level = Column(String(20), default="NONE", comment="NONE/WATCH/URGENT")
+    risk_items_json = Column(Text)
+    skip_reason = Column(String(255), default="")
+    consent_version = Column(String(20), default="")
+    submitted_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class ManualInterviewRequest(Base):
+    __tablename__ = "manual_interview_requests"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, index=True, nullable=False)
+    user_email = Column(String(100), index=True, nullable=False, default="")
+    passport_no = Column(String(100), index=True, default="")
+    reason = Column(String(50), default="")
+    note = Column(String(255), default="")
+    status = Column(String(20), nullable=False, default="pending", comment="pending/contacted/done")
+    handled_by = Column(String(100), default="")
+    handled_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.now)
+
+
+class UploadSession(Base):
+    __tablename__ = "upload_sessions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    upload_id = Column(String(64), unique=True, index=True, nullable=False)
+    session_id = Column(String(64), index=True, nullable=False, default="")
+    total_chunks = Column(Integer, nullable=False, default=0)
+    chunk_size = Column(Integer, nullable=False, default=0)
+    received_json = Column(Text, default="[]")
+    bytes_count = Column(Integer, default=0)
+    status = Column(String(20), nullable=False, default="uploading", comment="uploading/uploaded/merged")
+    oss_key = Column(String(255), default="")
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+
 if __name__ == "__main__":
     migrate_db(seed_super_admin=True)

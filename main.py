@@ -18,7 +18,7 @@ from core.concurrency_guard import get_capacity_snapshot
 from core.database import database_ready, init_db
 from core.interview_job_service import get_worker_queue_snapshot
 from core.redis_utils import ensure_redis_available, redis_available
-from routers import admin_api, external_api, face_api, user_api
+from routers import admin_api, assessment_api, external_api, face_api, user_api
 
 
 def register_static_mime_types():
@@ -32,6 +32,7 @@ app = FastAPI(title="西电 AI 面试系统")
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 app.include_router(user_api.router, prefix="/api/user", tags=["用户端接口"])
+app.include_router(assessment_api.router, prefix="/api/user/assessment", tags=["心理测评"])
 app.include_router(admin_api.router, prefix="/api/admin", tags=["管理端接口"])
 app.include_router(face_api.router, prefix="/api/face", tags=["人脸核验与监考"])
 app.include_router(external_api.router, prefix="/api/external", tags=["对外系统接口"])
@@ -131,6 +132,20 @@ async def help_center_page():
 
 app.add_api_route("/help", help_center_page, methods=["GET"], response_class=HTMLResponse, tags=["pages"])
 app.add_api_route("/help-center", help_center_page, methods=["GET"], response_class=HTMLResponse, tags=["pages"])
+
+
+async def assessment_page():
+    html_path = os.path.join(base_dir, "frontend", "user", "assessment.html")
+    with open(html_path, "r", encoding="utf-8") as file:
+        return Response(
+            content=file.read(),
+            media_type="text/html; charset=utf-8",
+            headers={"Cache-Control": "no-store"},
+        )
+
+
+app.add_api_route("/assessment", assessment_page, methods=["GET"], response_class=HTMLResponse, tags=["pages"])
+app.add_api_route("/assessment/", assessment_page, methods=["GET"], response_class=HTMLResponse, tags=["pages"])
 
 
 runtime_dir = os.path.join(base_dir, ".runtime")
