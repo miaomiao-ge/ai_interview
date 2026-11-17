@@ -1914,7 +1914,7 @@ async function finishAndArchiveInterview() {
         if (!uploadResult || uploadResult.status !== "success") {
             // 录制上传失败不能阻断评估：报告仍需生成，音视频归档交由后台补偿
             UI.setStatus(
-                getLangText("⚠️ 录制上传失败，仍会提交面试评估", "⚠️ Recording upload failed; submitting for evaluation anyway"),
+                getLangText("⚠️ 录像上传未完成，可稍后重试；面试评估已提交", "⚠️ Recording upload incomplete; evaluation already submitted"),
                 "orange"
             );
         } else {
@@ -2045,3 +2045,66 @@ function startLipSyncAnimation() {
     }
     animate();
 }
+
+// ==========================================
+// 人工面试申请 / 上次面试结果
+// ==========================================
+const manualInterviewDialog = document.getElementById('manualInterviewDialog');
+const requestManualInterviewBtn = document.getElementById('requestManualInterviewBtn');
+
+if (requestManualInterviewBtn && manualInterviewDialog) {
+    requestManualInterviewBtn.addEventListener('click', () => {
+        manualInterviewDialog.hidden = false;
+        document.getElementById('manualStatusText').textContent = '';
+    });
+}
+
+document.getElementById('manualCancelBtn')?.addEventListener('click', () => {
+    if (manualInterviewDialog) manualInterviewDialog.hidden = true;
+});
+
+document.getElementById('manualSubmitBtn')?.addEventListener('click', async () => {
+    const reason = document.getElementById('manualReasonSelect').value;
+    const note = document.getElementById('manualNoteInput').value.trim();
+    const statusEl = document.getElementById('manualStatusText');
+    statusEl.textContent = '提交中…';
+    try {
+        const token = localStorage.getItem('ai_interviewer_token') || '';
+        const response = await fetch(`${mediaManager.getAppBasePath()}/api/user/manual_interview_request`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ reason, note }),
+        });
+        const data = await response.json();
+        if (data.status !== 'success') throw new Error(data.message || '提交失败');
+        statusEl.textContent = data.message || '已提交，老师会在 1 个工作日内联系你';
+        setTimeout(() => { if (manualInterviewDialog) manualInterviewDialog.hidden = true; }, 1500);
+    } catch (error) {
+        statusEl.textContent = error.message || '提交失败，请稍后重试';
+    }
+});
+
+async function refreshLastInterview() {
+    const token = localStorage.getItem('ai_interviewer_token') || '';
+    if (!token) return;
+    try {
+        const response = await fetch(`${mediaManager.getAppBasePath()}/api/user/last_interview`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        if (!data.has_record) return;
+        const card = document.getElementById('lastInterviewCard');
+        card.hidden = false;
+        document.getElementById('lastInterviewScore').textContent = data.total_score ?? '--';
+        document.getElementById('lastInterviewTime').textContent = data.completed_at || '';
+        document.getElementById('retakeInterviewBtn').addEventListener('click', () => {
+            if (window.confirm('重新面试会新增一条面试记录，之前的面试结果会保留。确定继续吗？')) {
+                document.getElementById('initInterviewBtn')?.click();
+            }
+        });
+    } catch (error) {
+        console.warn('[interview] last record unavailable', error);
+    }
+}
+
+refreshLastInterview();

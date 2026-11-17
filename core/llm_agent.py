@@ -174,6 +174,8 @@ DEFAULT_EVAL_PROMPT = """你现在是一位资深的大学招生官。
 4. 综合素养与适应能力：关注态度、礼貌、抗压、跨文化适应、合作意识和解决问题倾向。表现稳定积极即可给良好分。
 5. 语言能力：关注是否能完成基本交流。允许少量语法、用词或口音问题；只要不影响理解，不应过度扣分。
 
+【措辞要求】：评价必须委婉、面向发展。禁止使用「较差」「不合格」「缺乏」「不足」「偏弱」「很差」等负面标签，改用「可进一步提升」「建议补充」「尚有发展空间」「尚需加强」等表述。评价重点放在核心优势与发展建议，不逐条罗列问题。
+
 请严格输出 JSON，不要输出 Markdown，不要输出额外说明，格式如下：
 {
   "candidate_name": "候选人姓名或未知",
@@ -698,6 +700,40 @@ def parse_structured_evaluation(raw_text: str) -> dict:
     return data
 
 
+_SOFTEN_MAP = (
+    ("较差的表现", "可进一步发展的方面"),
+    ("较差", "尚有提升空间"),
+    ("很差", "尚需提升"),
+    ("不足", "可进一步提升"),
+    ("缺乏", "可补充"),
+    ("不合格", "尚需加强"),
+    ("偏弱", "有提升空间"),
+)
+
+
+def soften_evaluation_wording(text: str) -> str:
+    result = text or ""
+    for blunt, gentle in _SOFTEN_MAP:
+        result = result.replace(blunt, gentle)
+    return result
+
+
+def soften_evaluation_payload(payload: dict) -> dict:
+    softened = dict(payload)
+    softened["summary"] = soften_evaluation_wording(str(payload.get("summary", "")))
+    softened["strengths"] = [
+        soften_evaluation_wording(str(item)) for item in (payload.get("strengths") or [])
+    ]
+    softened["improvements"] = [
+        soften_evaluation_wording(str(item)) for item in (payload.get("improvements") or [])
+    ]
+    softened["dimension_scores"] = [
+        {**item, "comment": soften_evaluation_wording(str(item.get("comment", "")))}
+        for item in (payload.get("dimension_scores") or [])
+    ]
+    return softened
+
+
 def render_structured_evaluation_report(payload: dict) -> str:
     lines = [
         f"综合得分：{payload['total_score']}/100",
@@ -895,6 +931,7 @@ def evaluate_interview(session_id: str) -> Union[dict, str]:
         structured = parse_structured_evaluation(response.content)
         structured = _calibrate_evaluation_payload(structured, state, candidate_answers)
         structured = _apply_score_uplift(structured)
+        structured = soften_evaluation_payload(structured)
         report = render_structured_evaluation_report(structured)
         state.status = "evaluated"
         _save_session_state(state)

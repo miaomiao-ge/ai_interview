@@ -14,7 +14,7 @@ from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from sqlalchemy import func
 
-from core.database import SessionLocal, User
+from core.database import InterviewRecord, SessionLocal, UploadSession, User
 from core.passwords import hash_password as hash_password_bcrypt, verify_password
 from core.email_utils import send_verification_email
 from core.llm_agent import (
@@ -24,10 +24,17 @@ from core.llm_agent import (
     session_exists,
     update_session_runtime,
 )
-from core.interview_job_service import enqueue_interview_processing, get_interview_status
+from core.interview_job_service import backfill_archive, enqueue_interview_processing, get_interview_status
 from core.platform_account_sync import ensure_local_account_from_platform
 from core.interview_sso import SSOTicketError, verify_sso_ticket
 from core.psych_assessment_service import has_submitted as has_submitted_assessment
+from core.manual_interview_service import create_request as create_manual_request
+from core.chunked_upload import (
+    cleanup_parts,
+    create_upload as create_chunked_upload,
+    merge_parts,
+    save_chunk as save_upload_chunk,
+)
 from core.tts_utils import generate_tts_audio
 from core.config import (
     SECRET_KEY,
@@ -1324,3 +1331,151 @@ async def get_evaluation(session_id: str, request: Request):
     if auth_error:
         return auth_error
     return enqueue_interview_processing(session_id, user_email)
+
+
+class ManualInterviewRequestModel(BaseModel):
+    reason: str = ""
+    note: str = ""
+
+
+@router.post("/manual_interview_request")
+async def manual_interview_request(req: ManualInterviewRequestModel, request: Request):
+    identity, auth_error = get_authenticated_user_identity(request)
+    if auth_error:
+        return auth_error
+    if not identity:
+        return {"status": "error", "code": "login_required", "message": "请先登录"}
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == identity["id"]).first()
+        if not user:
+            return {"status": "error", "code": "user_not_found", "message": "账号不存在"}
+        record = create_manual_request(db, user, req.reason, req.note)
+        return {
+            "status": "success",
+            "request_id": record.id,
+            "created_at": record.created_at.isoformat(timespec="seconds") if record.created_at else "",
+            "message": "已提交，老师会在 1 个工作日内联系你",
+        }
+    finally:
+        db.close()
+
+
+class UploadSessionRequest(BaseModel):
+    session_id: str
+    total_chunks: int
+    chunk_size: int = 5 * 1024 * 1024
+
+
+@router.post("/upload/session")
+async def upload_create(req: UploadSessionRequest):
+    if not session_exists(req.session_id):
+        return {"status": "error", "message": "面试会话不存在或已失效"}
+    db = SessionLocal()
+    try:
+        record = create_chunked_upload(db, req.session_id, req.total_chunks, req.chunk_size)
+        return {"status": "success", "upload_id": record.upload_id, "received_chunks": []}
+    except ValueError as exc:
+        return {"status": "error", "message": str(exc)}
+    finally:
+        db.close()
+
+
+@router.post("/upload/chunk")
+async def upload_chunk(upload_id: str, index: int, request: Request):
+    data = await request.body()
+    if not data:
+        return {"status": "error", "message": "空分片"}
+    db = SessionLocal()
+    try:
+        record = save_upload_chunk(db, upload_id, index, data)
+        return {"status": "success", "received": len(json.loads(record.received_json or "[]"))}
+    except ValueError as exc:
+        return {"status": "error", "message": str(exc)}
+    finally:
+        db.close()
+
+
+@router.get("/upload/status")
+async def upload_status(upload_id: str):
+    db = SessionLocal()
+    try:
+        record = db.query(UploadSession).filter(UploadSession.upload_id == upload_id).first()
+        if not record:
+            return {"status": "error", "message": "上传任务不存在"}
+        return {
+            "status": "success",
+            "received_chunks": json.loads(record.received_json or "[]"),
+            "total_chunks": record.total_chunks,
+            "upload_status": record.status,
+        }
+    finally:
+        db.close()
+
+
+@router.post("/upload/complete")
+async def upload_complete(upload_id: str):
+    db = SessionLocal()
+    try:
+        record = db.query(UploadSession).filter(UploadSession.upload_id == upload_id).first()
+        if not record:
+            return {"status": "error", "message": "上传任务不存在"}
+        merged_path, size = merge_parts(record)
+        oss_key = _media_oss_key(record.session_id, "mkv")
+        oss_url = await asyncio.to_thread(upload_to_oss, merged_path, oss_key, True)
+        cleanup_parts(upload_id)
+        record.status = "merged"
+        record.oss_key = oss_key
+        db.commit()
+        _store_uploaded_media(record.session_id, "mkv", size, oss_key, oss_url)
+        db2 = SessionLocal()
+        try:
+            backfill_archive(db2, record.session_id)
+        finally:
+            db2.close()
+        return {"status": "success", "url": oss_url, "oss_key": oss_key, "bytes": size}
+    except ValueError as exc:
+        return {"status": "error", "message": str(exc)}
+    except Exception as exc:
+        return {"status": "error", "message": f"OSS upload failed: {exc}"}
+    finally:
+        db.close()
+
+
+@router.get("/last_interview")
+async def last_interview(request: Request):
+    identity, auth_error = get_authenticated_user_identity(request)
+    if auth_error:
+        return auth_error
+    if not identity:
+        return {"status": "success", "has_record": False}
+
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.id == identity["id"]).first()
+        if not user:
+            return {"status": "success", "has_record": False}
+        record = (
+            db.query(InterviewRecord)
+            .filter(InterviewRecord.user_email == (user.passport_no or user.email or ""))
+            .filter(InterviewRecord.evaluate_status == "success")
+            .order_by(InterviewRecord.id.desc())
+            .first()
+        )
+        if not record:
+            return {"status": "success", "has_record": False}
+        total_score = None
+        try:
+            total_score = json.loads(record.evaluation_result_json or "{}").get("total_score")
+        except ValueError:
+            total_score = None
+        return {
+            "status": "success",
+            "has_record": True,
+            "session_id": record.session_id,
+            "total_score": total_score,
+            "completed_at": record.completed_at.isoformat(timespec="seconds") if record.completed_at else "",
+        }
+    finally:
+        db.close()

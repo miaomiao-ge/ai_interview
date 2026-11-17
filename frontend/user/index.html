@@ -290,6 +290,15 @@
             </ol>
 
             <section class="prep-room-card">
+                <div id="lastInterviewCard" class="prep-last-interview" hidden>
+                    <div>
+                        <b>上次面试：<span id="lastInterviewScore">--</span> 分</b>
+                        <small id="lastInterviewTime"></small>
+                    </div>
+                    <div class="prep-last-actions">
+                        <button id="retakeInterviewBtn" class="btn prep-secondary" type="button">重新面试</button>
+                    </div>
+                </div>
                 <div class="prep-main-panel">
                     <div class="prep-section-title">面试语言 / Interview Language</div>
                     <select id="interviewLang" class="custom-input prep-select" aria-label="Interview Language">
@@ -340,6 +349,9 @@
                     <a id="startAssessmentBtn" class="btn btn-large prep-secondary" href="/interview/assessment/">
                         <span class="prep-secondary-copy"><span class="practice-zh">先完成心理测评</span><span class="practice-en">Wellbeing Survey First</span></span>
                     </a>
+                    <button id="requestManualInterviewBtn" class="btn btn-large prep-secondary" type="button">
+                        <span class="prep-secondary-copy"><span class="practice-zh">申请人工面试（腾讯会议）</span><span class="practice-en">Request a Live Interview (Tencent Meeting)</span></span>
+                    </button>
                     </div>
                     <div id="assessmentStateText" class="prep-assessment-state"></div>
                     <div class="prep-footer-meta">
@@ -478,6 +490,27 @@
         </div>
     </div>
 
-    <script type="module" src="/static/user/js/boot.js?v=20261117assess"></script>
+    <script type="module" src="/static/user/js/boot.js?v=20261117features"></script>
+    <div id="manualInterviewDialog" class="mi-dialog" hidden>
+        <div class="mi-dialog-card">
+            <h3>申请人工面试（腾讯会议）</h3>
+            <p>如因设备、网络或身体原因无法完成 AI 面试，可以申请人工面试。老师会在 1 个工作日内与你联系并安排腾讯会议。</p>
+            <label>申请原因
+                <select id="manualReasonSelect">
+                    <option value="device">设备（麦克风/摄像头）无法使用</option>
+                    <option value="network">网络不稳定，无法完成面试</option>
+                    <option value="other">其他原因</option>
+                </select>
+            </label>
+            <label>补充说明（选填，200 字以内）
+                <textarea id="manualNoteInput" maxlength="200" rows="3"></textarea>
+            </label>
+            <div class="mi-dialog-actions">
+                <button id="manualCancelBtn" class="assess-btn ghost" type="button">取消</button>
+                <button id="manualSubmitBtn" class="assess-btn" type="button">提交申请</button>
+            </div>
+            <p id="manualStatusText" class="assess-status"></p>
+        </div>
+    </div>
 </body>
 </html>

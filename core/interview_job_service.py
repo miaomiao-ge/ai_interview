@@ -632,3 +632,21 @@ def run_worker_forever(poll_interval_seconds: float = 2) -> None:
             time.sleep(poll_interval_seconds)
             continue
         process_interview_job(job_id)
+
+
+def backfill_archive(db, session_id: str) -> dict:
+    """Late media upload after the evaluation job finished: patch the archive fields."""
+    media = get_session_media(session_id) or {}
+    av_media = media.get("av") if isinstance(media, dict) else None
+    if not isinstance(av_media, dict) or not av_media.get("url"):
+        return {"status": "skipped", "message": "media not uploaded yet"}
+
+    record = db.query(InterviewRecord).filter(InterviewRecord.session_id == session_id).first()
+    if not record:
+        return {"status": "not_found"}
+
+    record.av_path = av_media.get("url", "")
+    record.archive_status = "success"
+    record.archive_error = ""
+    db.commit()
+    return {"status": "success", "url": record.av_path}

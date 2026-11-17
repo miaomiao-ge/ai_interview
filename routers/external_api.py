@@ -17,6 +17,7 @@ from core.config import (
     SECRET_KEY,
 )
 from core.database import InterviewRecord, SessionLocal, User
+from core.manual_interview_service import list_requests as list_manual_requests
 
 
 router = APIRouter()
@@ -345,5 +346,33 @@ async def get_interview_results(
         )[:limit]
 
         return {"status": "success", "count": len(data), "data": data}
+    finally:
+        db.close()
+
+
+def serialize_manual_request(record) -> dict:
+    return {
+        "id": record.id,
+        "user_email": record.user_email or "",
+        "passport_no": record.passport_no or "",
+        "reason": record.reason or "",
+        "note": record.note or "",
+        "status": record.status or "pending",
+        "created_at": record.created_at.isoformat(timespec="seconds") if record.created_at else "",
+    }
+
+
+@router.get("/manual-interview-requests")
+async def manual_interview_requests(
+    status: str = Query("pending"),
+    limit: int = Query(50, ge=1, le=200),
+    authorization: str | None = Header(None),
+    x_external_api_key: str | None = Header(None, alias="X-External-Api-Key"),
+):
+    verify_external_api_key(authorization=authorization, x_external_api_key=x_external_api_key)
+    db = SessionLocal()
+    try:
+        records = list_manual_requests(db, status=status, limit=limit)
+        return {"status": "success", "items": [serialize_manual_request(item) for item in records]}
     finally:
         db.close()

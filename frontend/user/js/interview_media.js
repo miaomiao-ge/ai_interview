@@ -1,4 +1,5 @@
 import { submitAnswerAPI, submitAnswerMediaAPI, uploadMediaAPI } from './api.js?v=889';
+import { uploadInChunks } from './chunked_upload.js';
 
 export class InterviewMediaManager {
     constructor() {
@@ -966,6 +967,13 @@ export class InterviewMediaManager {
         this.stop();
         if (!blob.size) {
             return null;
+        }
+        try {
+            const result = await uploadInChunks({ sessionId: uploadSessionId, blob });
+            if (result.status === 'success') return result;
+            console.warn('[upload] chunked upload failed, fallback to single request', result.message);
+        } catch (error) {
+            console.warn('[upload] chunked upload crashed, fallback to single request', error);
         }
         return await uploadMediaAPI(uploadSessionId, blob, 'mkv');
     }
