@@ -6,6 +6,7 @@ from typing import Any
 
 import jwt
 from fastapi import APIRouter, Form, Header, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import or_
 
 from core.config import (
@@ -17,7 +18,10 @@ from core.config import (
     SECRET_KEY,
 )
 from core.database import InterviewRecord, SessionLocal, User
-from core.manual_interview_service import list_requests as list_manual_requests
+from core.manual_interview_service import (
+    list_requests as list_manual_requests,
+    mark_status as mark_manual_request_status,
+)
 
 
 router = APIRouter()
@@ -374,5 +378,30 @@ async def manual_interview_requests(
     try:
         records = list_manual_requests(db, status=status, limit=limit)
         return {"status": "success", "items": [serialize_manual_request(item) for item in records]}
+    finally:
+        db.close()
+
+
+class ManualRequestStatusBody(BaseModel):
+    status: str
+    handled_by: str = ""
+
+
+@router.post("/manual-interview-requests/{request_id}/status")
+async def update_manual_interview_request_status(
+    request_id: int,
+    body: ManualRequestStatusBody,
+    authorization: str | None = Header(None),
+    x_external_api_key: str | None = Header(None, alias="X-External-Api-Key"),
+):
+    verify_external_api_key(authorization=authorization, x_external_api_key=x_external_api_key)
+    db = SessionLocal()
+    try:
+        record = mark_manual_request_status(db, request_id, body.status, body.handled_by)
+        if not record:
+            return {"status": "error", "message": "人工面试申请不存在"}
+        return {"status": "success", "item": serialize_manual_request(record)}
+    except ValueError as exc:
+        return {"status": "error", "message": str(exc)}
     finally:
         db.close()
