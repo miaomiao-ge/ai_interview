@@ -835,12 +835,19 @@ async def sso_login(req: SSOLoginRequest, request: Request = None):
         }
 
     passport_no = normalize_passport_no(payload.get("passport_no"))
+    ticket_account = str(payload.get("account") or "").strip()
     source_name = str(payload.get("source") or "").strip().lower() or None
     db = SessionLocal()
     try:
         user, platform_error = ensure_local_account_from_platform(
             db, passport_no, source_name=source_name
         )
+        # Some platform accounts carry a passport that differs from the record the
+        # account sync exposes; retry with the ticket account before giving up.
+        if user is None and ticket_account and ticket_account.upper() != passport_no:
+            user, platform_error = ensure_local_account_from_platform(
+                db, ticket_account, source_name=source_name
+            )
         if user is None:
             if platform_error == "unavailable":
                 return {
