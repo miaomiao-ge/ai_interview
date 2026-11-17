@@ -49,6 +49,22 @@ def collect_mappings(limit: int | None = None):
     return by_id, by_passport
 
 
+def load_mapping_file(path: str):
+    """Load [{"passport_no":..., "account":...}] or {passport: account} exports."""
+    with open(path, encoding="utf-8") as handle:
+        data = json.load(handle)
+    by_passport: dict[str, set[str]] = {}
+    items = data.items() if isinstance(data, dict) else (
+        (item.get("passport_no"), item.get("account")) for item in data
+    )
+    for passport, account in items:
+        clean_passport = normalize_passport_no(passport)
+        clean_account = str(account or "").strip()[:100]
+        if clean_passport and clean_account:
+            by_passport.setdefault(clean_passport, set()).add(clean_account)
+    return {}, by_passport
+
+
 def _single(values: set[str] | None) -> tuple[str | None, bool]:
     if not values:
         return None, False
@@ -96,18 +112,30 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="回填历史 AI 面试账号的 platform_account")
     parser.add_argument("--apply", action="store_true", help="写入数据库；默认只统计")
     parser.add_argument("--limit", type=int, default=None, help="最多读取多少条平台账号")
+    parser.add_argument(
+        "--mapping-file",
+        default="",
+        help="从平台账号表导出的 JSON：[{\"passport_no\":..,\"account\":..}] 或 {passport: account}",
+    )
     args = parser.parse_args()
 
-    if not PLATFORM_ACCOUNT_SOURCES:
-        print(json.dumps({"status": "not_configured"}, ensure_ascii=False))
-        return 2
+    if args.mapping_file:
+        try:
+            by_id, by_passport = load_mapping_file(args.mapping_file)
+        except (OSError, ValueError) as exc:
+            print(json.dumps({"status": "failed", "message": str(exc)}, ensure_ascii=False))
+            return 2
+    else:
+        if not PLATFORM_ACCOUNT_SOURCES:
+            print(json.dumps({"status": "not_configured"}, ensure_ascii=False))
+            return 2
 
-    init_db()
-    try:
-        by_id, by_passport = collect_mappings(limit=args.limit)
-    except PlatformAccountError as exc:
-        print(json.dumps({"status": "failed", "message": str(exc)}, ensure_ascii=False))
-        return 2
+        init_db()
+        try:
+            by_id, by_passport = collect_mappings(limit=args.limit)
+        except PlatformAccountError as exc:
+            print(json.dumps({"status": "failed", "message": str(exc)}, ensure_ascii=False))
+            return 2
 
     db = SessionLocal()
     try:

@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from tools.backfill_platform_accounts import plan_backfill
+from tools.backfill_platform_accounts import load_mapping_file, plan_backfill
 
 
 def user(**overrides):
@@ -44,3 +44,18 @@ def test_unmatched_user_is_counted():
     updates, stats = plan_backfill([user(passport_no="UNKNOWN")], {}, {})
     assert updates == []
     assert stats["unmatched"] == 1
+
+
+def test_load_mapping_file_accepts_dict_and_list(tmp_path):
+    mapping = tmp_path / "mapping.json"
+    mapping.write_text('{"p123456": "student@example.com"}', encoding="utf-8")
+    by_id, by_passport = load_mapping_file(str(mapping))
+    assert by_id == {}
+    assert by_passport == {"P123456": {"student@example.com"}}
+
+    mapping.write_text(
+        '[{"passport_no": "P765432", "account": "other@example.com"}]',
+        encoding="utf-8",
+    )
+    _, by_passport = load_mapping_file(str(mapping))
+    assert by_passport == {"P765432": {"other@example.com"}}
