@@ -25,5 +25,5 @@ if (ticket) {
     }
 }
 
-await import('./main.js?v=20261117login');
+await import('./main.js?v=20261117btns');
 document.documentElement.removeAttribute('data-sso-pending');

@@ -11062,7 +11062,6 @@ body[data-lang="en"] #interviewSection.room-reference #aiFirstQuestion {
 }
 
 .prep-assessment-state { font-size: 13px; color: #7a869a; margin-top: 8px; }
-.prep-secondary { background: #eef2f8; color: #1f2733; }
 
 .mi-dialog { position: fixed; inset: 0; background: rgba(15, 23, 42, .45); display: flex; align-items: center; justify-content: center; z-index: 60; }
 .mi-dialog[hidden] { display: none; }
