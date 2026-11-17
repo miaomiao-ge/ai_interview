@@ -14,7 +14,7 @@ function authHeaders() {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(`${appBasePath()}/api/user/assessment${path}`, {
+  const response = await fetch(`/api/user/assessment${path}`, {
     ...options,
     headers: { 'Content-Type': 'application/json', ...authHeaders(), ...(options.headers || {}) },
   });

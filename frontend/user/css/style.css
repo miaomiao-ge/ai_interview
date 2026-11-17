@@ -11076,3 +11076,7 @@ body[data-lang="en"] #interviewSection.room-reference #aiFirstQuestion {
 .prep-last-interview { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px; background: #f2f6fd; margin-bottom: 16px; font-size: 14px; }
 .prep-last-interview small { display: block; color: #7a869a; margin-top: 4px; }
 .prep-last-actions { display: flex; gap: 8px; }
+
+.prep-last-interview[hidden] { display: none; }
+
+[hidden] { display: none !important; }

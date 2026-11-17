@@ -1728,7 +1728,7 @@ async function refreshAssessmentStatus() {
     try {
         const token = localStorage.getItem('ai_interviewer_token') || '';
         if (!token) return;
-        const response = await fetch(`${mediaManager.getAppBasePath()}/api/user/assessment/result`, {
+        const response = await fetch('/api/user/assessment/result', {
             headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
@@ -2070,7 +2070,7 @@ document.getElementById('manualSubmitBtn')?.addEventListener('click', async () =
     statusEl.textContent = '提交中…';
     try {
         const token = localStorage.getItem('ai_interviewer_token') || '';
-        const response = await fetch(`${mediaManager.getAppBasePath()}/api/user/manual_interview_request`, {
+        const response = await fetch('/api/user/manual_interview_request', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ reason, note }),
@@ -2088,7 +2088,7 @@ async function refreshLastInterview() {
     const token = localStorage.getItem('ai_interviewer_token') || '';
     if (!token) return;
     try {
-        const response = await fetch(`${mediaManager.getAppBasePath()}/api/user/last_interview`, {
+        const response = await fetch('/api/user/last_interview', {
             headers: { Authorization: `Bearer ${token}` },
         });
         const data = await response.json();
