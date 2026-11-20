@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from dotenv import load_dotenv
 try:
     from aliyunsdkcore.client import AcsClient
@@ -180,13 +181,16 @@ if not DASHSCOPE_API_KEY:
     print("WARNING: DASHSCOPE_API_KEY is not configured", flush=True)
 LLM_BASE_URL = os.getenv("LLM_BASE_URL")
 
-# 缓存 Token，阿里云的 Token 有效期为 24 小时，不需要每次都请求
+# 缓存 Token，阿里云的 Token 有效期只有 24 小时，必须按 ExpireTime 刷新
 _cached_token = None
+_cached_token_expires_at = 0.0
+_TOKEN_REFRESH_MARGIN_SECONDS = 300
 
 
 def get_aliyun_token():
-    global _cached_token
-    if _cached_token:
+    global _cached_token, _cached_token_expires_at
+    now = time.time()
+    if _cached_token and now < _cached_token_expires_at - _TOKEN_REFRESH_MARGIN_SECONDS:
         return _cached_token
 
     if AcsClient is None or CommonRequest is None:
@@ -206,9 +210,17 @@ def get_aliyun_token():
         # 发起请求并解析结果
         response = client.do_action_with_exception(request)
         jss = json.loads(response)
-        _cached_token = jss['Token']['Id']
+        token = jss['Token']
+        _cached_token = token['Id']
+        expires_at = float(token.get('ExpireTime') or 0)
+        if expires_at > 10_000_000_000:  # 兼容毫秒时间戳
+            expires_at /= 1000
+        _cached_token_expires_at = expires_at if expires_at > now else now + 24 * 3600
         print(f"Aliyun temporary token acquired: {_cached_token[:6]}***", flush=True)
         return _cached_token
     except Exception as e:
+        # 刷新失败时清空缓存，下一次请求重新尝试，避免继续使用已过期 token
+        _cached_token = None
+        _cached_token_expires_at = 0.0
         print(f"Failed to get Aliyun token: {e}", flush=True)
         return ""
