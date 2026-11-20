@@ -35,7 +35,7 @@ if (token) {
             cache: 'no-store',
         });
         const data = await response.json().catch(() => ({}));
-        if (data.assessment_status !== 'submitted') {
+        if (data.status === 'success' && data.assessment_status !== 'submitted') {
             redirectingToAssessment = true;
             sessionStorage.setItem('assessment_return_to', location.pathname + location.search);
             location.replace('/interview/assessment/');
