@@ -5401,6 +5401,34 @@ body {
     overflow: hidden;
 }
 
+/* 小屏/低分辨率下右侧评估栏内容会超出面板高度：让面板自身滚动，
+   并禁止各段被 flex 压缩，避免面试须知被裁切或与维度卡重叠。 */
+#interviewSection.room-reference .right-panel {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #c7d2e0 transparent;
+}
+
+#interviewSection.room-reference .right-panel .panel-header,
+#interviewSection.room-reference .right-panel .dimension-card-list,
+#interviewSection.room-reference .right-panel .interview-notice,
+#interviewSection.room-reference .right-panel .room-trust-row {
+    flex: 0 0 auto;
+}
+
+#interviewSection.room-reference .right-panel .dimension-card-list {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+}
+
+#interviewSection.room-reference .right-panel .interview-notice {
+    margin-top: 10px;
+}
+
 #interviewSection.room-reference .left-panel::before {
     display: none !important;
 }
