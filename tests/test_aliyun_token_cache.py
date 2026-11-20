@@ -90,3 +90,14 @@ def test_failed_refresh_clears_cache(monkeypatch):
     assert config.get_aliyun_token() == ""
     assert config._cached_token is None
     assert config._cached_token_expires_at == 0.0
+
+
+def test_appkey_selection_by_language(monkeypatch):
+    monkeypatch.setattr(config, "ALI_APPKEY", "zh-key")
+    monkeypatch.setattr(config, "ALI_APPKEY_EN", "en-key")
+    assert config.get_aliyun_appkey("en") == "en-key"
+    assert config.get_aliyun_appkey("en-US") == "en-key"
+    assert config.get_aliyun_appkey("zh") == "zh-key"
+
+    monkeypatch.setattr(config, "ALI_APPKEY_EN", "")
+    assert config.get_aliyun_appkey("en") == "zh-key"

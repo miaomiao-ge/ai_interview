@@ -5,7 +5,7 @@ import time
 import urllib.error
 import urllib.request
 
-from core.config import ALI_APPKEY, get_aliyun_token
+from core.config import get_aliyun_appkey, get_aliyun_token
 
 
 def _tts_filename(session_id: str) -> str:
@@ -32,7 +32,7 @@ def generate_tts_audio(text: str, session_id: str, language: str = "zh", max_ret
 
     url = "https://nls-gateway-cn-shanghai.aliyuncs.com/stream/v1/tts"
     payload = {
-        "appkey": ALI_APPKEY,
+        "appkey": get_aliyun_appkey(language),
         "token": token,
         "text": text,
         "format": "wav",

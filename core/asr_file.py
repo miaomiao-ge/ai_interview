@@ -8,7 +8,7 @@ import nls
 from core.config import (
     ASR_FILE_TIMEOUT_SECONDS,
     ASR_STREAM_SLEEP_SECONDS,
-    get_aliyun_asr_appkey,
+    get_aliyun_appkey,
     get_aliyun_asr_start_options,
     get_aliyun_token,
 )
@@ -80,7 +80,7 @@ def transcribe_media_file(local_file_path: str, language: str = "zh", timeout_se
     collector = FileASRCollector()
     transcriber = nls.NlsSpeechTranscriber(
         url="wss://nls-gateway.cn-shanghai.aliyuncs.com/ws/v1",
-        appkey=get_aliyun_asr_appkey(language),
+        appkey=get_aliyun_appkey(language),
         token=token,
         on_start=collector.on_start,
         on_sentence_begin=collector.on_sentence_begin,

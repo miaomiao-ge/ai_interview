@@ -150,7 +150,8 @@ EXTERNAL_RESULT_APP_SECRET = (os.getenv("EXTERNAL_RESULT_APP_SECRET") or "").str
 EXTERNAL_RESULT_TOKEN_EXPIRE_SECONDS = int(os.getenv("EXTERNAL_RESULT_TOKEN_EXPIRE_SECONDS", 24 * 3600))
 
 
-def get_aliyun_asr_appkey(language: str = "zh") -> str:
+def get_aliyun_appkey(language: str = "zh") -> str:
+    """English projects (ASR/TTS) use their own appkey; fall back to the Chinese one."""
     return ALI_APPKEY_EN if (language or "").lower().startswith("en") and ALI_APPKEY_EN else ALI_APPKEY
 
 

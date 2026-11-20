@@ -44,7 +44,7 @@ from core.config import (
     ASR_FILE_MAX_CONCURRENT,
     LLM_MAX_CONCURRENT,
     TTS_MAX_CONCURRENT,
-    get_aliyun_asr_appkey,
+    get_aliyun_appkey,
     get_aliyun_asr_start_options,
     get_aliyun_token,
 )
@@ -491,7 +491,7 @@ class RealtimeASRSession:
 
         self.transcriber = nls.NlsSpeechTranscriber(
             url="wss://nls-gateway.cn-shanghai.aliyuncs.com/ws/v1",
-            appkey=get_aliyun_asr_appkey(self.language),
+            appkey=get_aliyun_appkey(self.language),
             token=token,
             on_start=self.on_start,
             on_sentence_begin=self.on_sentence_begin,
