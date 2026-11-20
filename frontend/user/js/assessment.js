@@ -120,6 +120,8 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
     statusEl.textContent = result.message || '提交失败，请重试';
     return;
   }
-  statusEl.textContent = '提交成功，正在返回准备面试…';
-  setTimeout(() => { window.location.href = `${appBasePath()}/`; }, 800);
+  statusEl.textContent = '提交成功，正在进行面试准备…';
+  const returnTo = sessionStorage.getItem('assessment_return_to') || `${appBasePath()}/`;
+  sessionStorage.removeItem('assessment_return_to');
+  setTimeout(() => { window.location.href = returnTo; }, 800);
 });

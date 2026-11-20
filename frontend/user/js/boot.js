@@ -25,5 +25,27 @@ if (ticket) {
     }
 }
 
-await import('./main.js?v=20261117btns');
+// 心理测评是面试准备页之前的必经步骤：已登录但未提交测评时先进入测评页。
+const token = localStorage.getItem('ai_interviewer_token') || '';
+let redirectingToAssessment = false;
+if (token) {
+    try {
+        const response = await fetch('/api/user/assessment/result', {
+            headers: {Authorization: `Bearer ${token}`},
+            cache: 'no-store',
+        });
+        const data = await response.json().catch(() => ({}));
+        if (data.assessment_status !== 'submitted') {
+            redirectingToAssessment = true;
+            sessionStorage.setItem('assessment_return_to', location.pathname + location.search);
+            location.replace('/interview/assessment/');
+        }
+    } catch (error) {
+        console.warn('[assessment] status check failed', error);
+    }
+}
+
+if (!redirectingToAssessment && !location.pathname.startsWith('/interview/assessment')) {
+    await import('./main.js?v=20261120assessment');
+}
 document.documentElement.removeAttribute('data-sso-pending');

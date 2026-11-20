@@ -118,3 +118,31 @@ def test_serialize_result_row_includes_student_and_interview_result():
     assert payload["interviewResult"]["dimensionScores"][0]["score"] == 18
     assert payload["interviewResult"]["faceVerification"]["status"] == "passed"
     assert payload["interviewResult"]["media"]["avPath"].endswith("interview.mp4")
+
+
+def test_serialize_assessment_row_omits_raw_answers():
+    user = SimpleNamespace(platform_account="TESTSTU3016", passport_no="TESTSTU3016")
+    record = SimpleNamespace(
+        instrument="BSI-53",
+        version="1",
+        attempt_no=2,
+        submitted_at=datetime(2026, 11, 20, 10, 0, 0),
+        risk_level="WATCH",
+        gsi=1.234,
+        pst=12,
+        psdi=1.5,
+        dimension_json=json.dumps({"SOM": 1.2, "ANX": 2.0}),
+        answers_json=json.dumps({"1": 3, "2": 4}),
+        risk_items_json=json.dumps([{"no": 9, "value": 3}]),
+    )
+
+    payload = external_api.serialize_assessment_row(user, record)
+
+    assert payload["available"] is True
+    assert payload["account"] == "TESTSTU3016"
+    assert payload["riskLevel"] == "WATCH"
+    assert payload["gsi"] == 1.234
+    assert [item["key"] for item in payload["dimensions"]] == ["SOM", "ANX"]
+    assert payload["dimensions"][0]["label"] == "躯体化"
+    assert "answers" not in json.dumps(payload)
+    assert "risk_items" not in json.dumps(payload)

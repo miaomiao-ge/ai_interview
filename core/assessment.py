@@ -19,6 +19,18 @@ DIMENSIONS = {
     "PSY": [3, 14, 34, 44, 53],
 }
 
+DIMENSION_LABELS = {
+    "SOM": "躯体化",
+    "OC": "强迫症状",
+    "IS": "人际关系敏感",
+    "DEP": "抑郁",
+    "ANX": "焦虑",
+    "HOS": "敌对",
+    "PHOB": "恐怖",
+    "PAR": "偏执",
+    "PSY": "精神病性",
+}
+
 TOTAL_ITEMS = 53
 
 

@@ -17,7 +17,8 @@ from core.config import (
     EXTERNAL_RESULT_TOKEN_EXPIRE_SECONDS,
     SECRET_KEY,
 )
-from core.database import InterviewRecord, SessionLocal, User
+from core.database import InterviewRecord, PsychAssessment, SessionLocal, User
+from core.assessment import DIMENSION_LABELS
 from core.manual_interview_service import (
     list_requests as list_manual_requests,
     mark_status as mark_manual_request_status,
@@ -356,6 +357,79 @@ async def get_interview_results(
         )[:limit]
 
         return {"status": "success", "count": len(data), "data": data}
+    finally:
+        db.close()
+
+
+def serialize_assessment_row(user: User, record: PsychAssessment) -> dict:
+    dimensions = {}
+    try:
+        dimensions = json.loads(record.dimension_json or "{}")
+    except (TypeError, ValueError):
+        dimensions = {}
+    return {
+        "available": True,
+        "account": getattr(user, "platform_account", "") or "",
+        "passportNo": getattr(user, "passport_no", "") or "",
+        "instrument": record.instrument or "BSI-53",
+        "version": record.version or "",
+        "attemptNo": record.attempt_no or 1,
+        "submittedAt": _iso(record.submitted_at),
+        "riskLevel": record.risk_level or "NONE",
+        "gsi": record.gsi,
+        "pst": record.pst,
+        "psdi": record.psdi,
+        "dimensions": [
+            {"key": code, "label": label, "score": dimensions.get(code)}
+            for code, label in DIMENSION_LABELS.items()
+            if code in dimensions
+        ],
+    }
+
+
+@router.get("/assessment-results")
+async def get_assessment_results(
+    account: str = Query("", alias="account"),
+    passport_no: str = Query("", alias="passportNo"),
+    authorization: str | None = Header(None),
+    x_external_api_key: str | None = Header(None, alias="X-External-Api-Key"),
+):
+    verify_external_api_key(authorization=authorization, x_external_api_key=x_external_api_key)
+
+    clean_account = (account or "").strip()
+    clean_passport = normalize_passport_no(passport_no)
+    if not clean_account and not clean_passport:
+        return {"status": "error", "message": "account or passportNo is required"}
+
+    db = SessionLocal()
+    try:
+        user = None
+        if clean_account:
+            user = db.query(User).filter(User.platform_account == clean_account).first()
+        if user is None and clean_passport:
+            matches = db.query(User).filter(User.passport_no == clean_passport).limit(2).all()
+            if len(matches) == 1:
+                user = matches[0]
+            elif len(matches) > 1:
+                return {"status": "success", "available": False, "message": "账号信息不唯一，无法展示测评结果"}
+        if user is None:
+            return {"status": "success", "available": False, "message": "暂无心理测评记录"}
+
+        record = (
+            db.query(PsychAssessment)
+            .filter(PsychAssessment.user_id == user.id, PsychAssessment.status == "submitted")
+            .order_by(PsychAssessment.attempt_no.desc(), PsychAssessment.id.desc())
+            .first()
+        )
+        if record is None:
+            return {
+                "status": "success",
+                "available": False,
+                "account": getattr(user, "platform_account", "") or "",
+                "passportNo": getattr(user, "passport_no", "") or "",
+                "message": "尚未完成心理测评",
+            }
+        return {"status": "success", **serialize_assessment_row(user, record)}
     finally:
         db.close()
 
